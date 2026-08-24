@@ -49,7 +49,7 @@
 <body class="bg-slate-900 text-slate-100 flex flex-col h-screen overflow-hidden font-sans">
 
   <!-- ========================================== -->
-  <!-- 1. 系統介紹與身分設定頁 (手動輸入姓名) -->
+  <!-- 1. 系統介紹與身分設定頁 -->
   <!-- ========================================== -->
   <div id="welcomeScreen" class="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-xl flex flex-col justify-between p-6 max-w-lg mx-auto touch-scroll">
     <div class="space-y-6 my-auto">
@@ -58,7 +58,7 @@
           <i class="fa-solid fa-smoking"></i>
         </div>
         <h1 class="text-xl font-bold text-white tracking-tight">南投縣熄菸設施巡檢系統</h1>
-        <p class="text-xs text-slate-400">年度設施定位導航・雲端拍照回報・跨年度清冊整合</p>
+        <p class="text-xs text-slate-400">年度設施定位導航・雲端拍照回報・清冊自動同步</p>
       </div>
 
       <!-- 巡檢員輸入卡片 -->
@@ -163,7 +163,7 @@
       </div>
       <div class="mt-1.5 flex justify-between text-[10px] text-slate-300">
         <span class="text-emerald-400">已巡: <b id="statDone">0</b></span>
-        <span class="text-rose-400">待巡: <b id="statPending">0</b></span>
+        <span class="text-rose-400">未巡: <b id="statPending">0</b></span>
         <span class="text-slate-400">總數: <b id="statTotal">0</b></span>
       </div>
     </div>
@@ -171,8 +171,8 @@
     <!-- 圖例浮窗 -->
     <div id="legendBox" class="hidden absolute top-16 right-4 z-20 bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-xl p-3 shadow-xl text-xs space-y-1.5">
       <div class="font-bold text-slate-200 pb-1 border-b border-slate-800">標記顏色說明</div>
-      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> 正常使用 (已巡檢)</div>
-      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-rose-500"></span> 待巡檢 / 損壞待修</div>
+      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> 已巡檢 (合格)</div>
+      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-rose-500"></span> 未巡檢 / 待巡檢</div>
       <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-500"></span> 零件缺失已更換</div>
       <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-sky-500"></span> 目前 GPS 定位點</div>
     </div>
@@ -188,7 +188,7 @@
           設施列表 (<span id="sheetCount">0</span> 處)
         </h2>
         <div class="flex items-center gap-2" onclick="event.stopPropagation()">
-          <input type="text" id="searchInput" oninput="applyFilters()" placeholder="搜尋單位或地址..." class="bg-slate-700 text-xs px-2.5 py-1 rounded-lg text-slate-200 border border-slate-600 focus:outline-none w-36">
+          <input type="text" id="searchInput" oninput="applyFilters()" placeholder="搜尋地點或地址..." class="bg-slate-700 text-xs px-2.5 py-1 rounded-lg text-slate-200 border border-slate-600 focus:outline-none w-36">
           <button onclick="toggleBottomSheet()" class="text-slate-400 hover:text-slate-200 text-sm">
             <i class="fa-solid fa-chevron-down"></i>
           </button>
@@ -198,7 +198,7 @@
     <div class="flex-1 overflow-y-auto touch-scroll p-3 space-y-2.5" id="facilityListContainer"></div>
   </div>
 
-  <!-- 地點詳細規格與資訊 Modal -->
+  <!-- 地點詳細規格 Modal -->
   <div id="detailModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
     <div class="bg-slate-800 border-t sm:border border-slate-700 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4 max-h-[88vh] overflow-y-auto touch-scroll">
       
@@ -208,7 +208,7 @@
             <span id="detailTownBadge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">鄉鎮市</span>
             <span id="detailStatusBadge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-700 text-slate-200">狀態</span>
           </div>
-          <h3 class="text-base font-bold text-white mt-1.5" id="detailTitle">設施名稱</h3>
+          <h3 class="text-base font-bold text-white mt-1.5" id="detailTitle">設置地點名稱</h3>
           <p class="text-xs text-slate-400 mt-0.5" id="detailAddress"><i class="fa-solid fa-location-dot text-rose-400 mr-1"></i> 地址載入中...</p>
         </div>
         <button onclick="closeDetailModal()" class="w-8 h-8 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center hover:bg-slate-600">
@@ -219,23 +219,23 @@
       <!-- 數量看板 -->
       <div id="detailCountContainer"></div>
 
-      <!-- 詳細屬性欄位清單 -->
+      <!-- 詳細屬性欄位 -->
       <div class="space-y-2 text-xs">
         <div class="flex justify-between items-center py-1.5 border-b border-slate-700/60">
           <span class="text-slate-400"><i class="fa-solid fa-user-check text-slate-500 mr-1.5"></i> 巡檢人員</span>
-          <span class="font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60" id="detailInspector">未記錄</span>
+          <span class="font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60" id="detailInspector">未巡檢</span>
         </div>
         <div class="flex justify-between items-center py-1.5 border-b border-slate-700/60">
           <span class="text-slate-400"><i class="fa-solid fa-hashtag text-slate-500 mr-1.5"></i> 設施編號</span>
           <span class="font-medium text-slate-200" id="detailId">-</span>
         </div>
         <div class="flex justify-between items-center py-1.5 border-b border-slate-700/60">
-          <span class="text-slate-400"><i class="fa-solid fa-store text-slate-500 mr-1.5"></i> 設置類型</span>
+          <span class="text-slate-400"><i class="fa-solid fa-store text-slate-500 mr-1.5"></i> 店家 / 設置類型</span>
           <span class="font-medium text-slate-200 text-right max-w-[200px] truncate" id="detailType">-</span>
         </div>
         <div class="flex justify-between items-center py-1.5 border-b border-slate-700/60">
-          <span class="text-slate-400"><i class="fa-solid fa-layer-group text-slate-500 mr-1.5"></i> 地點分類</span>
-          <span class="font-medium text-slate-200 text-right max-w-[200px] truncate" id="detailCategory">-</span>
+          <span class="text-slate-400"><i class="fa-solid fa-shield-halved text-slate-500 mr-1.5"></i> 硬體維護狀態</span>
+          <span class="font-medium text-slate-200 text-right max-w-[200px] truncate" id="detailHardwareStatus">正常使用</span>
         </div>
         <div class="flex justify-between items-center py-1.5 border-b border-slate-700/60">
           <span class="text-slate-400"><i class="fa-solid fa-calendar-check text-slate-500 mr-1.5"></i> 巡檢 / 調查日期</span>
@@ -273,7 +273,7 @@
       <div class="flex justify-between items-start border-b border-slate-700 pb-3">
         <div>
           <span id="modalTownBadge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">鄉鎮市</span>
-          <h3 class="text-base font-bold text-white mt-1" id="modalPlaceTitle">設施名稱</h3>
+          <h3 class="text-base font-bold text-white mt-1" id="modalPlaceTitle">設置地點名稱</h3>
           <p class="text-xs text-slate-400" id="modalAddress">詳細地址</p>
         </div>
         <button onclick="closeInspectModal()" class="w-8 h-8 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center hover:bg-slate-600">
@@ -292,10 +292,10 @@
       <!-- 維護狀態 -->
       <div>
         <label class="block text-xs font-medium text-slate-300 mb-1">
-          <i class="fa-solid fa-square-check text-emerald-400 mr-1"></i> 維護狀態
+          <i class="fa-solid fa-square-check text-emerald-400 mr-1"></i> 設備維護狀況
         </label>
         <select id="inspectStatus" class="w-full bg-slate-700 border border-slate-600 text-white rounded-lg p-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none">
-          <option value="正常使用">🟢 正常使用 (已巡檢合格)</option>
+          <option value="正常使用">🟢 正常使用</option>
           <option value="零件缺失已更換">🟡 零件缺失已更換</option>
           <option value="損壞待修">🔴 損壞待修 / 待清潔</option>
           <option value="未設置">⚪ 未設置 / 移除</option>
@@ -344,17 +344,7 @@
     // ==========================================
     const GAS_ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbzJKjUHrWB3K3vEGRPS-cM4Iff0XkTsQ9_zvbCk9SZZcctHzo1mp6AMhmF8wTRe1nSv/exec"; 
 
-    // 示範/快取資料
-    const FALLBACK_DATA = [
-      { id: "1", rowIndex: 2, "熄菸桶編號": "1-3", "鄉鎮市": "草屯鎮", "單位": "碧峰里環保志工隊", "設置場址": "草屯鎮碧峰路135巷6號", "店家類型": "公部門(含村里辦公室)", "設置地點分類": "戶外開放空間", "設置熄菸桶數量(支)": 1, "維護狀態": "正常使用", "巡檢/調查日期": "2025/08/25", "緯度": 23.9856, "經度": 120.6712, "備註": "草屯清潔隊窗口", "巡檢人員": "" },
-      { id: "4", rowIndex: 5, "熄菸桶編號": "4-6", "鄉鎮市": "魚池鄉", "單位": "水社綜合商場", "設置場址": "魚池鄉中山路163號", "店家類型": "便利商店", "設置地點分類": "戶外開放空間", "設置熄菸桶數量(支)": 2, "維護狀態": "正常使用", "巡檢/調查日期": "2025/11/27", "緯度": 23.8665, "經度": 120.9110, "備註": "青商會窗口", "巡檢人員": "" },
-      { id: "7", rowIndex: 8, "熄菸桶編號": "7", "鄉鎮市": "草屯鎮", "單位": "新立修配廠", "設置場址": "草屯鎮草溪路471號", "店家類型": "其他", "設置地點分類": "戶外開放空間", "設置熄菸桶數量(支)": 1, "維護狀態": "損壞待修", "巡檢/調查日期": "2025/08/25", "緯度": 23.9688, "經度": 120.6811, "備註": "盒蓋鬆動需檢修", "巡檢人員": "" },
-      { id: "8", rowIndex: 9, "熄菸桶編號": "8-9", "鄉鎮市": "南投市", "單位": "南投慈德宮", "設置場址": "南投市大庄路59巷10號", "店家類型": "宮廟", "設置地點分類": "戶外開放空間", "設置熄菸桶數量(支)": 1, "維護狀態": "正常使用", "巡檢/調查日期": "2025/08/25", "緯度": 23.9189, "經度": 120.6841, "備註": "南投市公所窗口", "巡檢人員": "" },
-      { id: "100", rowIndex: 101, "熄菸桶編號": "100-110", "鄉鎮市": "竹山鎮", "單位": "山依民宿", "設置場址": "竹山鎮集山路三段", "店家類型": "其他店家", "設置地點分類": "戶外開放空間", "設置熄菸桶數量(支)": 1, "維護狀態": "未設置", "巡檢/調查日期": "2025/08/25", "緯度": 23.7589, "經度": 120.6789, "備註": "待發放", "巡檢人員": "" },
-      { id: "139", rowIndex: 140, "熄菸桶編號": "139-144", "鄉鎮市": "中寮鄉", "單位": "石龍宮(泡麵土地公)", "設置場址": "中寮鄉龍南路303號", "店家類型": "宮廟", "設置地點分類": "戶外開放空間", "設置熄菸桶數量(支)": 3, "維護狀態": "正常使用", "巡檢/調查日期": "2025/08/25", "緯度": 23.9015, "經度": 120.7654, "備註": "香火鼎盛熱點", "巡檢人員": "" }
-    ];
-
-    let allData = [...FALLBACK_DATA];
+    let allData = [];
     let filteredData = [];
     let activeTownship = "ALL";
     let activeItem = null;
@@ -363,14 +353,27 @@
     let map, markerLayerGroup, userMarker = null;
     let isSheetOpen = false;
 
+    // 取得項目主標題 (嚴格優先讀取 設置地點)
+    function getItemTitle(item) {
+      return item["設置地點"] || item["單位"] || item["設置場址"] || item["設施名稱"] || "未命名地點";
+    }
+
+    // 取得項目地址 (嚴格優先讀取 設置詳細地址)
+    function getItemAddress(item) {
+      return item["設置詳細地址"] || item["設置場址"] || item["地址"] || "無詳細地址";
+    }
+
+    // 判定是否為已巡檢 (嚴格以「巡檢狀態」欄位為唯一判定標準)
+    function checkIsInspected(item) {
+      const inspectStatus = (item["巡檢狀態"] || "").toString().trim();
+      return inspectStatus === "已巡檢";
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
       initMap();
       checkStoredInspector();
     });
 
-    // ==========================================
-    // 身分設定與介紹頁邏輯
-    // ==========================================
     function checkStoredInspector() {
       const savedName = localStorage.getItem('inspector_name');
       if (savedName) {
@@ -399,9 +402,6 @@
       document.getElementById('welcomeScreen').classList.remove('hidden');
     }
 
-    // ==========================================
-    // 地圖與資料運作邏輯
-    // ==========================================
     function initMap() {
       map = L.map('map', { zoomControl: false }).setView([23.9098, 120.6853], 11);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -415,25 +415,22 @@
       const sheetName = document.getElementById('sheetSelect').value;
       const syncBadge = document.getElementById('syncBadge');
 
-      if (GAS_ENDPOINT_URL && !GAS_ENDPOINT_URL.includes("YOUR_GAS_WEB_APP_URL")) {
-        syncBadge.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin mr-1"></i> 同步中';
-        fetch(`${GAS_ENDPOINT_URL}?sheet=${encodeURIComponent(sheetName)}`)
-          .then(res => res.json())
-          .then(res => {
-            if (res.status === 'success' && res.data && res.data.length > 0) {
-              allData = res.data;
-              syncBadge.innerHTML = '<i class="fa-solid fa-circle text-[6px] animate-pulse mr-0.5"></i> 已連線';
-            }
+      syncBadge.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin mr-1"></i> 讀取中';
+      fetch(`${GAS_ENDPOINT_URL}?sheet=${encodeURIComponent(sheetName)}`)
+        .then(res => res.json())
+        .then(res => {
+          if (res.status === 'success' && res.data) {
+            allData = res.data;
+            syncBadge.innerHTML = '<i class="fa-solid fa-circle text-[6px] animate-pulse mr-0.5"></i> 已連線';
             renderApp();
-          })
-          .catch(err => {
-            console.warn("GAS 連線失敗，改用本地快取:", err);
-            syncBadge.innerHTML = '離線模式';
-            renderApp();
-          });
-      } else {
-        renderApp();
-      }
+          } else {
+            alert("讀取失敗：" + res.message);
+          }
+        })
+        .catch(err => {
+          console.warn("GAS 連線失敗:", err);
+          syncBadge.innerHTML = '連線異常';
+        });
     }
 
     function renderApp() {
@@ -469,13 +466,13 @@
       
       filteredData = allData.filter(item => {
         const town = item["鄉鎮市"] || item["鄉鎮市區"] || "";
-        const inspector = item["巡檢人員"] || "";
+        const title = getItemTitle(item).toLowerCase();
+        const address = getItemAddress(item).toLowerCase();
+        const id = (item["熄菸桶編號"] || "").toString().toLowerCase();
+        const inspector = (item["巡檢人員"] || "").toLowerCase();
+
         const matchTown = (activeTownship === "ALL" || town === activeTownship);
-        const matchKey = !keyword || 
-          (item["單位"] && item["單位"].toLowerCase().includes(keyword)) ||
-          (item["設置場址"] && item["設置場址"].toLowerCase().includes(keyword)) ||
-          (item["熄菸桶編號"] && item["熄菸桶編號"].toString().toLowerCase().includes(keyword)) ||
-          (inspector && inspector.toLowerCase().includes(keyword));
+        const matchKey = !keyword || title.includes(keyword) || address.includes(keyword) || id.includes(keyword) || inspector.includes(keyword);
         return matchTown && matchKey;
       });
 
@@ -486,7 +483,7 @@
 
     function updateStatistics() {
       const total = filteredData.length;
-      const done = filteredData.filter(d => d["維護狀態"] === "正常使用" || d["維護狀態"] === "已巡檢").length;
+      const done = filteredData.filter(d => checkIsInspected(d)).length;
       const pending = total - done;
       const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
@@ -509,9 +506,11 @@
 
         if (!isNaN(lat) && !isNaN(lng)) {
           bounds.push([lat, lng]);
-          const isDone = (item["維護狀態"] === "正常使用" || item["維護狀態"] === "已巡檢");
+          const isDone = checkIsInspected(item);
           const isMissing = (item["維護狀態"] === "零件缺失已更換");
-          const inspector = item["巡檢人員"] || item["追蹤分配"] || "";
+          const inspector = item["巡檢人員"] || "";
+          const title = getItemTitle(item);
+          const address = getItemAddress(item);
           
           let colorBg = isDone ? "#10b981" : (isMissing ? "#f59e0b" : "#ef4444");
           let iconHtml = `
@@ -533,14 +532,14 @@
             <div class="p-1 text-slate-800 font-sans" style="min-width: 200px;">
               <div class="flex justify-between items-center mb-1">
                 <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">${item["鄉鎮市"] || item["鄉鎮市區"] || ""}</span>
-                ${inspector ? `<span class="text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded"><i class="fa-solid fa-user text-[9px] mr-0.5"></i>${inspector}</span>` : ""}
+                ${isDone ? `<span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200"><i class="fa-solid fa-user text-[9px] mr-0.5"></i>${inspector || '已巡檢'}</span>` : `<span class="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">未巡檢</span>`}
               </div>
-              <h4 class="font-bold text-sm text-slate-900">${item["單位"] || item["設置場址"]}</h4>
-              <p class="text-xs text-slate-500 mb-2 truncate">${item["設置場址"] || ""}</p>
+              <h4 class="font-bold text-sm text-slate-900">${title}</h4>
+              <p class="text-xs text-slate-500 mb-2 truncate">${address}</p>
               
               <div class="text-xs py-1 px-2 rounded bg-slate-100 mb-2 flex justify-between">
-                <span>狀態：<b>${item["維護狀態"] || "待巡檢"}</b></span>
-                <span class="text-slate-500">${item["巡檢/調查日期"] ? item["巡檢/調查日期"].toString().slice(0,10) : "未巡檢"}</span>
+                <span>巡檢：<b>${isDone ? "已巡檢" : "未巡檢"}</b></span>
+                <span class="text-slate-500">${item["巡檢/調查日期"] ? item["巡檢/調查日期"].toString().slice(0,10) : "尚未回報"}</span>
               </div>
 
               <div class="grid grid-cols-2 gap-1.5">
@@ -571,11 +570,14 @@
       }
 
       filteredData.forEach(item => {
-        const isDone = (item["維護狀態"] === "正常使用" || item["維護狀態"] === "已巡檢");
+        const isDone = checkIsInspected(item);
         const countMain = parseInt(item["設置熄菸桶數量(支)"] || item["設置數量(支)"] || item["設置數量"] || 1, 10);
         const countOther = item["其他熄菸設施(個)"] !== undefined && item["其他熄菸設施(個)"] !== "" ? parseInt(item["其他熄菸設施(個)"], 10) : null;
         const total = countOther !== null ? (countMain + countOther) : countMain;
-        const inspector = item["巡檢人員"] || item["追蹤分配"] || "";
+        
+        const title = getItemTitle(item);
+        const address = getItemAddress(item);
+        const inspector = item["巡檢人員"] || "";
 
         const card = document.createElement('div');
         card.className = "bg-slate-700/60 border border-slate-600/80 rounded-xl p-3 flex justify-between items-center active:bg-slate-700 transition cursor-pointer";
@@ -585,16 +587,17 @@
           <div class="flex-1 pr-2">
             <div class="flex items-center gap-1.5">
               <span class="text-[10px] px-1.5 py-0.5 rounded font-bold ${isDone ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}">
-                ${item["維護狀態"] || "未巡檢"}
+                ${isDone ? "已巡檢" : "未巡檢"}
               </span>
-              <span class="text-xs font-bold text-slate-100 truncate max-w-[130px]">${item["單位"] || "熄菸設施"}</span>
+              <span class="text-xs font-bold text-slate-100 truncate max-w-[140px]">${title}</span>
               <span class="text-[10px] text-teal-300 bg-slate-800 px-1 py-0.5 rounded">${total} 支</span>
             </div>
-            <p class="text-xs text-slate-400 mt-1 truncate">${item["設置場址"] || "無地址資訊"}</p>
+            <p class="text-xs text-slate-400 mt-1 truncate">${address}</p>
             <div class="text-[10px] text-slate-500 mt-1 flex flex-wrap gap-2 items-center">
               <span><i class="fa-regular fa-calendar"></i> ${item["巡檢/調查日期"] || "尚未回報"}</span>
-              ${inspector ? `<span class="text-emerald-400 bg-slate-800/80 px-1.5 py-0.2 rounded border border-emerald-900/60"><i class="fa-solid fa-user text-[9px] mr-0.5"></i>${inspector}</span>` : ""}
-              ${item["備註"] ? `<span class="text-amber-400/80 truncate max-w-[100px]"><i class="fa-solid fa-note-sticky"></i> ${item["備註"]}</span>` : ""}
+              ${isDone && inspector ? `<span class="text-emerald-400 bg-slate-800/80 px-1.5 py-0.2 rounded border border-emerald-900/60"><i class="fa-solid fa-user text-[9px] mr-0.5"></i>${inspector}</span>` : ""}
+              ${item["維護狀態"] ? `<span class="text-slate-400">(${item["維護狀態"]})</span>` : ""}
+              ${item["備註"] ? `<span class="text-amber-400/80 truncate max-w-[90px]"><i class="fa-solid fa-note-sticky"></i> ${item["備註"]}</span>` : ""}
             </div>
           </div>
           
@@ -614,16 +617,21 @@
     function openDetailModal(item) {
       activeItem = item;
       const town = item["鄉鎮市"] || item["鄉鎮市區"] || "南投縣";
-      const status = item["維護狀態"] || "未註明";
+      const isDone = checkIsInspected(item);
+      const status = isDone ? "已巡檢" : "未巡檢";
       const lat = parseFloat(item["緯度"]);
       const lng = parseFloat(item["經度"]);
-      const inspector = item["巡檢人員"] || item["追蹤分配"] || "尚未巡檢 / 未記錄";
+      const inspector = item["巡檢人員"] || "尚未巡檢";
+      const title = getItemTitle(item);
+      const address = getItemAddress(item);
       
       document.getElementById('detailTownBadge').textContent = town;
       document.getElementById('detailStatusBadge').textContent = status;
-      document.getElementById('detailTitle').textContent = item["單位"] || item["設置場址"] || "熄菸設施";
-      document.getElementById('detailAddress').innerHTML = `<i class="fa-solid fa-location-dot text-rose-400 mr-1"></i> ${item["設置場址"] || "無詳細地址"}`;
-      document.getElementById('detailInspector').textContent = inspector;
+      document.getElementById('detailStatusBadge').className = `text-[10px] font-bold px-2 py-0.5 rounded ${isDone ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}`;
+      document.getElementById('detailTitle').textContent = title;
+      document.getElementById('detailAddress').innerHTML = `<i class="fa-solid fa-location-dot text-rose-400 mr-1"></i> ${address}`;
+      document.getElementById('detailInspector').textContent = isDone ? inspector : "未巡檢";
+      document.getElementById('detailHardwareStatus').textContent = item["維護狀態"] || "正常使用";
 
       const countMain = parseInt(item["設置熄菸桶數量(支)"] || item["設置數量(支)"] || item["設置數量"] || 1, 10);
       const hasOther = item["其他熄菸設施(個)"] !== undefined && item["其他熄菸設施(個)"] !== "";
@@ -661,7 +669,6 @@
 
       document.getElementById('detailId').textContent = item["熄菸桶編號"] || item.id || "-";
       document.getElementById('detailType').textContent = item["店家類型"] || item["設置地點類型"] || "未分類";
-      document.getElementById('detailCategory').textContent = item["設置地點分類"] || item["設置地點類別(10類)"] || "戶外空間";
       document.getElementById('detailInspectDate').textContent = item["巡檢/調查日期"] || "尚未巡檢";
       
       if (!isNaN(lat) && !isNaN(lng)) {
@@ -682,10 +689,10 @@
       if (!activeItem) return;
       const lat = parseFloat(activeItem["緯度"]);
       const lng = parseFloat(activeItem["經度"]);
-      const address = activeItem["設置場址"];
+      const address = getItemAddress(activeItem);
       let target = (!isNaN(lat) && !isNaN(lng)) ? `${lat},${lng}` : encodeURIComponent(address);
-      if (!target) {
-        alert("該地點缺乏座標及地址資訊");
+      if (!target || target === "無詳細地址") {
+        alert("該地點缺乏座標及詳細地址資訊");
         return;
       }
       window.open(`https://www.google.com/maps/dir/?api=1&destination=${target}`, '_blank');
@@ -700,12 +707,11 @@
       activeItem = item;
       compressedBase64 = null;
       document.getElementById('modalTownBadge').textContent = item["鄉鎮市"] || item["鄉鎮市區"] || "南投縣";
-      document.getElementById('modalPlaceTitle').textContent = item["單位"] || item["設置場址"];
-      document.getElementById('modalAddress').textContent = item["設置場址"] || "";
-      document.getElementById('inspectStatus').value = item["維護狀態"] || "正常使用";
+      document.getElementById('modalPlaceTitle').textContent = getItemTitle(item);
+      document.getElementById('modalAddress').textContent = getItemAddress(item);
+      document.getElementById('inspectStatus').value = "正常使用";
       document.getElementById('inspectNotes').value = "";
       
-      // 自動填入已登入巡檢員姓名
       document.getElementById('inspectorInput').value = currentInspector || item["巡檢人員"] || "";
 
       document.getElementById('photoPreview').classList.add('hidden');
@@ -778,39 +784,32 @@
         imageBase64: compressedBase64
       };
 
+      // 前端即時切換為已巡檢
+      activeItem["巡檢狀態"] = "已巡檢";
       activeItem["維護狀態"] = newStatus;
       activeItem["巡檢人員"] = inspector;
       activeItem["巡檢/調查日期"] = new Date().toISOString().slice(0,10).replace(/-/g, '/');
       if (notes) activeItem["備註"] = payload.notes;
       applyFilters();
 
-      if (GAS_ENDPOINT_URL && !GAS_ENDPOINT_URL.includes("YOUR_GAS_WEB_APP_URL")) {
-        fetch(GAS_ENDPOINT_URL, {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        })
-        .then(res => res.json())
-        .then(res => {
-          saveBtn.disabled = false;
-          saveBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>確認並同步</span>';
-          closeInspectModal();
-          alert(`✅ [${activeItem["單位"]}] 巡檢紀錄 (${inspector}) 與照片已同步寫入！`);
-          loadDataFromGAS();
-        })
-        .catch(err => {
-          saveBtn.disabled = false;
-          saveBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>確認並同步</span>';
-          closeInspectModal();
-          alert("已更新本地畫面 (雲端連線逾時)");
-        });
-      } else {
-        setTimeout(() => {
-          saveBtn.disabled = false;
-          saveBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>確認並同步</span>';
-          closeInspectModal();
-          alert(`✅ 示範回報完成！\n單位：${activeItem["單位"]}\n狀態：${newStatus}\n巡檢員：${inspector}`);
-        }, 500);
-      }
+      fetch(GAS_ENDPOINT_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(res => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>確認並同步</span>';
+        closeInspectModal();
+        alert(`✅ [${getItemTitle(activeItem)}] 已標記為「已巡檢」並同步寫入試算表！`);
+        loadDataFromGAS();
+      })
+      .catch(err => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>確認並同步</span>';
+        closeInspectModal();
+        alert("已更新本地畫面 (雲端連線逾時)");
+      });
     }
 
     function locateUser() {
