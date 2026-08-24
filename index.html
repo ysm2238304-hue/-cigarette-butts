@@ -58,10 +58,9 @@
           <i class="fa-solid fa-smoking"></i>
         </div>
         <h1 class="text-xl font-bold text-white tracking-tight">南投縣熄菸設施巡檢系統</h1>
-        <p class="text-xs text-slate-400">年度設施定位導航・雲端拍照回報・清冊自動同步</p>
+        <p class="text-xs text-slate-400">年度設施定位導航・雲端階層拍照・清冊自動同步</p>
       </div>
 
-      <!-- 巡檢員輸入卡片 -->
       <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-xl space-y-3">
         <div class="flex items-center justify-between border-b border-slate-700/80 pb-2.5">
           <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
@@ -79,17 +78,15 @@
         </div>
       </div>
 
-      <!-- 提示說明 -->
       <div class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-3.5 text-[11px] text-slate-400 space-y-1">
         <div class="flex items-center gap-1.5 text-slate-300 font-semibold">
           <i class="fa-solid fa-circle-info text-teal-400"></i> 操作提示
         </div>
-        <p>• 系統將記錄此身分，並自動帶入今日所有巡檢回報。</p>
+        <p>• 照片將自動依「日期_人員 > 鄉鎮 > 地點」階層建夾歸檔。</p>
         <p>• 建議允許 iPhone Safari 取用 GPS 定位以獲得精準導航。</p>
       </div>
     </div>
 
-    <!-- 進入按鈕 -->
     <div class="pt-4">
       <button onclick="startInspectionSession()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-white text-sm font-bold shadow-lg shadow-emerald-900/50 hover:brightness-110 active:scale-95 transition flex items-center justify-center gap-2">
         <span>進入巡檢系統</span>
@@ -234,7 +231,7 @@
           <span class="font-medium text-slate-200 text-right max-w-[200px] truncate" id="detailType">-</span>
         </div>
         <div class="flex justify-between items-center py-1.5 border-b border-slate-700/60">
-          <span class="text-slate-400"><i class="fa-solid fa-shield-halved text-slate-500 mr-1.5"></i> 硬體維護狀態</span>
+          <span class="text-slate-400"><i class="fa-solid fa-shield-halved text-slate-500 mr-1.5"></i> 設備維護狀況</span>
           <span class="font-medium text-slate-200 text-right max-w-[200px] truncate" id="detailHardwareStatus">正常使用</span>
         </div>
         <div class="flex justify-between items-center py-1.5 border-b border-slate-700/60">
@@ -266,7 +263,7 @@
     </div>
   </div>
 
-  <!-- 巡檢回報 Modal -->
+  <!-- 巡檢回報 Modal (含重設為未巡檢) -->
   <div id="inspectModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
     <div class="bg-slate-800 border-t sm:border border-slate-700 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4 max-h-[88vh] overflow-y-auto touch-scroll">
       
@@ -327,6 +324,14 @@
         <textarea id="inspectNotes" rows="2" placeholder="填寫現場狀況或修繕紀錄..." class="w-full bg-slate-700 border border-slate-600 text-white rounded-lg p-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"></textarea>
       </div>
 
+      <!-- 重設為未巡檢 (防呆誤觸) -->
+      <div class="pt-1">
+        <button type="button" onclick="resetToUninspected()" class="w-full py-2 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 hover:bg-rose-900/60 active:scale-95 transition text-xs font-semibold flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-rotate-left"></i>
+          <span>回復為「未巡檢」狀態</span>
+        </button>
+      </div>
+
       <!-- 送出按鈕 -->
       <div class="flex gap-2 pt-2 border-t border-slate-700">
         <button onclick="closeInspectModal()" class="flex-1 py-2 rounded-xl bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition">取消</button>
@@ -353,17 +358,14 @@
     let map, markerLayerGroup, userMarker = null;
     let isSheetOpen = false;
 
-    // 取得項目主標題 (嚴格優先讀取 設置地點)
     function getItemTitle(item) {
       return item["設置地點"] || item["單位"] || item["設置場址"] || item["設施名稱"] || "未命名地點";
     }
 
-    // 取得項目地址 (嚴格優先讀取 設置詳細地址)
     function getItemAddress(item) {
       return item["設置詳細地址"] || item["設置場址"] || item["地址"] || "無詳細地址";
     }
 
-    // 判定是否為已巡檢 (嚴格以「巡檢狀態」欄位為唯一判定標準)
     function checkIsInspected(item) {
       const inspectStatus = (item["巡檢狀態"] || "").toString().trim();
       return inspectStatus === "已巡檢";
@@ -513,17 +515,25 @@
           const address = getItemAddress(item);
           
           let colorBg = isDone ? "#10b981" : (isMissing ? "#f59e0b" : "#ef4444");
+          const shortTitle = title.length > 8 ? title.slice(0, 8) + '...' : title;
+
+          // 圖示與地點小字
           let iconHtml = `
-            <div style="background-color: ${colorBg}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px;">
-              <i class="fa-solid fa-smoking"></i>
+            <div class="flex items-center gap-1" style="transform: translate(-10px, -10px);">
+              <div style="background-color: ${colorBg}; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); shrink-0;">
+                <i class="fa-solid fa-smoking"></i>
+              </div>
+              <span style="background: rgba(15, 23, 42, 0.85); color: #f8fafc; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(51, 65, 85, 0.8); white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.3); pointer-events: none;">
+                ${shortTitle}
+              </span>
             </div>
           `;
 
           const customIcon = L.divIcon({
             html: iconHtml,
             className: 'custom-div-icon',
-            iconSize: [24, 24],
-            iconAnchor: [12, 12]
+            iconSize: [120, 24],
+            iconAnchor: [11, 11]
           });
 
           const marker = L.marker([lat, lng], { icon: customIcon }).addTo(markerLayerGroup);
@@ -709,7 +719,7 @@
       document.getElementById('modalTownBadge').textContent = item["鄉鎮市"] || item["鄉鎮市區"] || "南投縣";
       document.getElementById('modalPlaceTitle').textContent = getItemTitle(item);
       document.getElementById('modalAddress').textContent = getItemAddress(item);
-      document.getElementById('inspectStatus').value = "正常使用";
+      document.getElementById('inspectStatus').value = item["維護狀態"] || "正常使用";
       document.getElementById('inspectNotes').value = "";
       
       document.getElementById('inspectorInput').value = currentInspector || item["巡檢人員"] || "";
@@ -763,6 +773,42 @@
       reader.readAsDataURL(file);
     }
 
+    // 重設為未巡檢狀態
+    function resetToUninspected() {
+      if (!activeItem) return;
+      const title = getItemTitle(activeItem);
+      if (!confirm(`⚠️ 確定要將【${title}】回復為「未巡檢」狀態嗎？`)) {
+        return;
+      }
+
+      const payload = {
+        sheetName: document.getElementById('sheetSelect').value,
+        rowIndex: activeItem.rowIndex || activeItem.id,
+        action: "reset"
+      };
+
+      activeItem["巡檢狀態"] = "未巡檢";
+      activeItem["巡檢人員"] = "";
+      activeItem["巡檢/調查日期"] = "";
+      applyFilters();
+
+      fetch(GAS_ENDPOINT_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(res => {
+        closeInspectModal();
+        alert(`🔄【${title}】已回復為未巡檢狀態！`);
+        loadDataFromGAS();
+      })
+      .catch(err => {
+        closeInspectModal();
+        alert("已更新本地畫面 (雲端連線逾時)");
+      });
+    }
+
+    // 提交巡檢紀錄 (攜帶階層歸檔所需資訊)
     function submitInspectionRecord() {
       if (!activeItem) return;
       const saveBtn = document.getElementById('saveBtn');
@@ -773,6 +819,8 @@
       const newStatus = document.getElementById('inspectStatus').value;
       const notes = document.getElementById('inspectNotes').value;
       const sheetName = document.getElementById('sheetSelect').value;
+      const title = getItemTitle(activeItem);
+      const town = activeItem["鄉鎮市"] || activeItem["鄉鎮市區"] || "其他鄉鎮";
 
       const payload = {
         sheetName: sheetName,
@@ -780,11 +828,12 @@
         rowIndex: activeItem.rowIndex || activeItem.id,
         status: newStatus,
         inspector: inspector,
+        township: town,
+        location: title,
         notes: notes,
         imageBase64: compressedBase64
       };
 
-      // 前端即時切換為已巡檢
       activeItem["巡檢狀態"] = "已巡檢";
       activeItem["維護狀態"] = newStatus;
       activeItem["巡檢人員"] = inspector;
@@ -801,7 +850,7 @@
         saveBtn.disabled = false;
         saveBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>確認並同步</span>';
         closeInspectModal();
-        alert(`✅ [${getItemTitle(activeItem)}] 已標記為「已巡檢」並同步寫入試算表！`);
+        alert(`✅ [${title}] 巡檢已同步！照片已依階層建夾儲存。`);
         loadDataFromGAS();
       })
       .catch(err => {
