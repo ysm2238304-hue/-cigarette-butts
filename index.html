@@ -1,1788 +1,1053 @@
 <!DOCTYPE html>
-<html lang="zh-TW" class="h-full">
+<html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>極光智慧抽獎系統 - 高效抗壓公信力版</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: { 50: '#f0f3ff', 100: '#e1e7ff', 200: '#cbd5ff', 300: '#a3b4ff', 400: '#7a8bff', 500: '#4f5eff', 600: '#3b40ff', 700: '#2c2aff', 800: '#2521cc', 900: '#2220a3' }
-                    }
-                }
-            }
-        }
-    </script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
-        * { font-family: 'Noto Sans TC', sans-serif; box-sizing: border-box; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .aurora-bg { background: radial-gradient(circle at 50% -20%, #f8fafc, #f1f5f9, #e2e8f0); position: relative; }
-        .marquee-card { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid rgba(0,0,0,0.05); }
-        .winner-card { border: 2px solid #d97706; background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); animation: prize-glow 2s infinite alternate; }
-        @keyframes prize-glow { from { box-shadow: 0 0 10px rgba(217,119,6,0.1); } to { box-shadow: 0 0 25px rgba(217,119,6,0.25); } }
-        .slot-window { position: relative; height: 76px; overflow: hidden; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.05); }
-        .slot-container { display: flex; flex-direction: column; transform: translateY(0); }
-        .slot-item { height: 76px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-weight: 700; transition: background-color 0.2s; }
-        .slot-perspective { perspective: 1000px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="熄菸巡檢">
+  <title>南投縣熄菸設施巡檢系統</title>
+  
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Leaflet Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    html, body {
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .touch-scroll {
+      -webkit-overflow-scrolling: touch;
+    }
+    .sheet-transition {
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .custom-div-icon {
+      background: none;
+      border: none;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .map-tag-label {
+      display: none;
+    }
+    .show-tags .map-tag-label {
+      display: block;
+    }
+  </style>
 </head>
-<body class="aurora-bg text-slate-800 min-h-full overflow-hidden">
+<body class="bg-slate-900 text-slate-100 flex flex-col font-sans">
 
-    <!-- Toast 訊息容器 -->
-    <div id="toast-container" class="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
+  <!-- ========================================== -->
+  <!-- 1. 系統介紹與身分設定頁 -->
+  <!-- ========================================== -->
+  <div id="welcomeScreen" class="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-xl flex flex-col justify-between p-6 max-w-lg mx-auto touch-scroll pt-[max(24px,env(safe-area-inset-top))] pb-[max(24px,env(safe-area-inset-bottom))]">
+    <div class="space-y-6 my-auto">
+      <div class="text-center space-y-2">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white text-3xl shadow-xl shadow-emerald-900/50 mx-auto">
+          <i class="fa-solid fa-smoking"></i>
+        </div>
+        <h1 class="text-xl font-bold text-white tracking-tight">南投縣熄菸設施巡檢系統</h1>
+        <p class="text-xs text-slate-400">年度設施定位導航・雲端階層拍照・清冊自動同步</p>
+      </div>
 
-    <!-- 隱藏的原生下拉選單 -->
-    <select id="prize-sel" onchange="syncUI()" class="hidden"></select>
+      <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-xl space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-700/80 pb-2.5">
+          <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+            <i class="fa-solid fa-user-tag text-emerald-400"></i> 設定巡檢人員
+          </span>
+          <span class="text-[10px] text-slate-400">登入後自動記憶</span>
+        </div>
 
-    <div class="relative z-10 max-w-[1900px] mx-auto p-4 flex flex-col h-screen overflow-hidden">
+        <div>
+          <label class="block text-[11px] text-slate-300 font-medium mb-1.5">請輸入巡檢人員姓名：</label>
+          <div class="relative">
+            <input type="text" id="welcomeInputName" placeholder="請輸入姓名 (例如：皓偉)" class="w-full bg-slate-700/90 border border-slate-600 text-white rounded-xl py-3 px-3 pl-10 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none placeholder:text-slate-500">
+            <i class="fa-solid fa-user-pen text-slate-400 absolute left-3.5 top-3.5 text-sm"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-3.5 text-[11px] text-slate-400 space-y-1">
+        <div class="flex items-center gap-1.5 text-slate-300 font-semibold">
+          <i class="fa-solid fa-circle-info text-teal-400"></i> 操作提示
+        </div>
+        <p>• 支援單一地點上傳至 50 張現場照片，自動分批穩定上傳。</p>
+        <p>• 照片依「日期_人員 > 鄉鎮 > 地點」階層自動分流歸檔。</p>
+      </div>
+    </div>
+
+    <div>
+      <button onclick="startInspectionSession()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-white text-sm font-bold shadow-lg shadow-emerald-900/50 hover:brightness-110 active:scale-95 transition flex items-center justify-center gap-2">
+        <span>進入巡檢系統</span>
+        <i class="fa-solid fa-arrow-right text-xs"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 2. 主系統：頂部導航列 -->
+  <!-- ========================================== -->
+  <header class="bg-slate-800/95 backdrop-blur-md border-b border-slate-700 px-4 pb-2.5 pt-[max(12px,env(safe-area-inset-top))] z-30 shrink-0 shadow-md">
+    <div class="flex items-center justify-between gap-2 max-w-4xl mx-auto">
+      
+      <div class="flex items-center space-x-2">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white shadow-md shadow-emerald-900/40">
+          <i class="fa-solid fa-smoking text-sm"></i>
+        </div>
+        <div>
+          <h1 class="text-xs font-bold text-white flex items-center gap-1">
+            熄菸設施巡檢
+            <span id="syncBadge" class="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-normal">
+              連線中
+            </span>
+          </h1>
+          <button onclick="openChangeInspector()" class="text-[11px] text-teal-300 hover:text-teal-200 flex items-center gap-1 mt-0.5">
+            <i class="fa-solid fa-user text-[10px]"></i>
+            <span id="headerInspectorName">巡檢員</span>
+            <span class="text-[9px] text-slate-400 underline">[切換]</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <select id="sheetSelect" onchange="loadDataFromGAS()" class="bg-slate-700/90 text-slate-200 text-xs rounded-lg px-2 py-1.5 border border-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium">
+          <option value="114年熄菸桶設置清單" selected>114年清冊</option>
+          <option value="113年熄菸桶設置清單">113年清冊</option>
+        </select>
+        <button onclick="toggleBottomSheet()" class="bg-slate-700 text-slate-200 text-xs px-2.5 py-1.5 rounded-lg border border-slate-600 active:scale-95 transition flex items-center gap-1">
+          <i class="fa-solid fa-list-ul"></i> 清單
+        </button>
+      </div>
+    </div>
+
+    <!-- 鄉鎮市滑動標籤 -->
+    <div class="mt-2 overflow-x-auto touch-scroll flex gap-1.5 pb-0.5 -mx-2 px-2 no-scrollbar" id="townshipTabs"></div>
+  </header>
+
+  <!-- 地圖容器 -->
+  <div class="relative flex-1 w-full bg-slate-950">
+    <div id="map" class="w-full h-full z-10"></div>
+
+    <!-- 右上角懸浮功能鍵 -->
+    <div class="absolute top-4 right-4 z-20 flex flex-col gap-2">
+      <button onclick="locateUser()" class="w-10 h-10 rounded-full bg-slate-800/90 backdrop-blur-md text-slate-200 border border-slate-600 shadow-lg flex items-center justify-center active:bg-slate-700 transition">
+        <i class="fa-solid fa-crosshairs text-base text-emerald-400" id="locateIcon"></i>
+      </button>
+      <button onclick="toggleLegend()" class="w-10 h-10 rounded-full bg-slate-800/90 backdrop-blur-md text-slate-200 border border-slate-600 shadow-lg flex items-center justify-center active:bg-slate-700 transition">
+        <i class="fa-solid fa-layer-group text-sm"></i>
+      </button>
+    </div>
+
+    <!-- 巡檢進度懸浮看板 -->
+    <div class="absolute top-4 left-4 z-20 bg-slate-900/90 backdrop-blur-md border border-slate-700 rounded-xl px-3 py-2 shadow-lg min-w-[175px]">
+      <div class="text-[11px] text-slate-400 flex justify-between items-center mb-1">
+        <span id="currentTownLabel" class="font-medium text-slate-200">全縣總覽</span>
+        <span id="progressPercent" class="font-bold text-emerald-400">0%</span>
+      </div>
+      <div class="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
+        <div id="progressBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+      </div>
+      <div class="mt-1.5 flex justify-between text-[10px] text-slate-300">
+        <span class="text-emerald-400">已巡: <b id="statDone">0</b></span>
+        <span class="text-rose-400">未巡: <b id="statPending">0</b></span>
+        <span class="text-slate-400">總數: <b id="statTotal">0</b></span>
+      </div>
+    </div>
+
+    <!-- 圖例浮窗 -->
+    <div id="legendBox" class="hidden absolute top-16 right-4 z-20 bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-xl p-3 shadow-xl text-xs space-y-1.5">
+      <div class="font-bold text-slate-200 pb-1 border-b border-slate-800">標記顏色說明</div>
+      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> 已巡檢 (合格)</div>
+      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-rose-500"></span> 未巡檢 / 待巡檢</div>
+      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-500"></span> 零件缺失已更換</div>
+      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-sky-500"></span> 目前 GPS 定位點</div>
+    </div>
+  </div>
+
+  <!-- iOS 底部抽屜清單 -->
+  <div id="bottomSheet" class="fixed inset-x-0 bottom-0 z-40 bg-slate-800/95 backdrop-blur-lg border-t border-slate-700 rounded-t-2xl shadow-2xl flex flex-col sheet-transition max-w-lg mx-auto pb-[env(safe-area-inset-bottom)]" style="height: 65vh; transform: translateY(100%);">
+    <div class="px-4 pt-3 pb-2 flex flex-col items-center border-b border-slate-700/60 cursor-pointer" onclick="toggleBottomSheet()">
+      <div class="w-10 h-1 rounded-full bg-slate-600 mb-2"></div>
+      <div class="flex items-center justify-between w-full">
+        <h2 class="text-sm font-bold text-slate-100 flex items-center gap-1.5">
+          <i class="fa-solid fa-list text-emerald-400"></i>
+          設施列表 (<span id="sheetCount">0</span> 處)
+        </h2>
+        <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+          <input type="text" id="searchInput" oninput="applyFilters()" placeholder="搜尋地點或地址..." class="bg-slate-700 text-xs px-2.5 py-1 rounded-lg text-slate-200 border border-slate-600 focus:outline-none w-36">
+          <button onclick="toggleBottomSheet()" class="text-slate-400 hover:text-slate-200 text-sm">
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="flex-1 overflow-y-auto touch-scroll p-3 space-y-2.5" id="facilityListContainer"></div>
+  </div>
+
+  <!-- 地點詳細規格 Modal -->
+  <div id="detailModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+    <div class="bg-slate-800 border-t sm:border border-slate-700 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto touch-scroll pb-[max(20px,env(safe-area-inset-bottom))]">
+      
+      <div class="flex justify-between items-start border-b border-slate-700 pb-3">
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span id="detailTownBadge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">鄉鎮市</span>
+            <span id="detailStatusBadge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-700 text-slate-200">狀態</span>
+          </div>
+          <h3 class="text-base font-bold text-white mt-1.5" id="detailTitle">設置地點名稱</h3>
+          <p class="text-xs text-slate-400 mt-0.5" id="detailAddress"><i class="fa-solid fa-location-dot text-rose-400 mr-1"></i> 地址載入中...</p>
+        </div>
+        <button onclick="closeDetailModal()" class="w-8 h-8 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center hover:bg-slate-600">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div id="detailCountContainer"></div>
+
+      <div class="space-y-2 text-xs">
+        <div class="flex justify-between items-center py-1.5 border-b border-slate-700/60">
+          <span class="text-slate-400"><i class="fa-solid fa-user-check text-slate-500 mr-1.5"></i> 巡檢人員</span>
+          <span class="font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60" id="detailInspector">未巡檢</span>
+        </div>
+        <div class="flex justify-between items-center py-1.5 border-b border-slate-700/60">
+          <span class="text-slate-400"><i class="fa-solid fa-hashtag text-slate-500 mr-1.5"></i> 設施編號</span>
+          <span class="font-medium text-slate-200" id="detailId">-</span>
+        </div>
+        <div class="flex justify-between items-center py-1.5 border-b border-slate-700/60">
+          <span class="text-slate-400"><i class="fa-solid fa-store text-slate-500 mr-1.5"></i> 店家 / 設置類型</span>
+          <span class="font-medium text-slate-200 text-right max-w-[200px] truncate" id="detailType">-</span>
+        </div>
+        <div class="flex justify-between items-center py-1.5 border-b border-slate-700/60">
+          <span class="text-slate-400"><i class="fa-solid fa-shield-halved text-slate-500 mr-1.5"></i> 設備維護狀況</span>
+          <span class="font-medium text-slate-200 text-right max-w-[200px] truncate" id="detailHardwareStatus">正常使用</span>
+        </div>
+        <div class="flex justify-between items-center py-1.5 border-b border-slate-700/60">
+          <span class="text-slate-400"><i class="fa-solid fa-calendar-check text-slate-500 mr-1.5"></i> 巡檢 / 調查日期</span>
+          <span class="font-medium text-slate-200" id="detailInspectDate">-</span>
+        </div>
+        <div class="flex justify-between items-center py-1.5 border-b border-slate-700/60">
+          <span class="text-slate-400"><i class="fa-solid fa-compass text-slate-500 mr-1.5"></i> 經緯度座標</span>
+          <span class="font-mono text-slate-300" id="detailCoordinates">-</span>
+        </div>
+        <div class="py-1.5">
+          <div class="text-slate-400 mb-1"><i class="fa-solid fa-note-sticky text-slate-500 mr-1.5"></i> 備註說明</div>
+          <div class="bg-slate-900/40 p-2.5 rounded-lg text-slate-300 border border-slate-700/60 text-xs min-h-[40px] leading-relaxed" id="detailNotes">無備註說明</div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2 border-t border-slate-700">
+        <button id="detailNavBtn" onclick="navCurrentDetail()" class="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 active:scale-95 transition flex items-center justify-center gap-1.5 shadow-lg shadow-blue-900/30">
+          <i class="fa-solid fa-location-arrow"></i>
+          <span>一鍵導航</span>
+        </button>
+        <button id="detailInspectBtn" onclick="openInspectFromDetail()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white text-xs font-bold hover:brightness-110 active:scale-95 transition flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-900/30">
+          <i class="fa-solid fa-clipboard-check"></i>
+          <span>巡檢回報</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 3. 巡檢回報 Modal (最高支援 50 張分批上傳) -->
+  <!-- ========================================== -->
+  <div id="inspectModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+    <div class="bg-slate-800 border-t sm:border border-slate-700 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4 max-h-[88vh] overflow-y-auto touch-scroll pb-[max(20px,env(safe-area-inset-bottom))]">
+      
+      <div class="flex justify-between items-start border-b border-slate-700 pb-3">
+        <div>
+          <span id="modalTownBadge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">鄉鎮市</span>
+          <h3 class="text-base font-bold text-white mt-1" id="modalPlaceTitle">設置地點名稱</h3>
+          <p class="text-xs text-slate-400" id="modalAddress">詳細地址</p>
+        </div>
+        <button onclick="closeInspectModal()" class="w-8 h-8 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center hover:bg-slate-600">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- 巡檢人員 -->
+      <div>
+        <label class="block text-xs font-medium text-slate-300 mb-1">
+          <i class="fa-solid fa-user-check text-emerald-400 mr-1"></i> 巡檢人員姓名
+        </label>
+        <input type="text" id="inspectorInput" class="w-full bg-slate-700 border border-slate-600 text-white rounded-lg p-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+      </div>
+
+      <!-- 維護狀態 -->
+      <div>
+        <label class="block text-xs font-medium text-slate-300 mb-1">
+          <i class="fa-solid fa-square-check text-emerald-400 mr-1"></i> 設備維護狀況
+        </label>
+        <select id="inspectStatus" class="w-full bg-slate-700 border border-slate-600 text-white rounded-lg p-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+          <option value="正常使用">🟢 正常使用</option>
+          <option value="零件缺失已更換">🟡 零件缺失已更換</option>
+          <option value="損壞待修">🔴 損壞待修 / 待清潔</option>
+          <option value="未設置">⚪ 未設置 / 移除</option>
+        </select>
+      </div>
+
+      <!-- 多照片上傳與預覽網格 (最高支援 50 張) -->
+      <div>
+        <label class="block text-xs font-medium text-slate-300 mb-1 flex justify-between items-center">
+          <span><i class="fa-solid fa-images text-emerald-400 mr-1"></i> 現場照片 (<span id="photoCountLabel">已選 0 / 50 張</span>)</span>
+          <span id="compressStatus" class="text-[10px] text-teal-300 hidden"><i class="fa-solid fa-arrows-rotate fa-spin mr-0.5"></i> 正在壓縮處理...</span>
+        </label>
         
-        <!-- 頂部 Header -->
-        <header class="relative flex items-center justify-between mb-4 border-b border-slate-200/80 pb-3 h-16 flex-shrink-0">
-            <div class="w-80 flex items-center gap-2 flex-shrink-0 z-10 select-none">
-                <div class="w-9 h-9 bg-brand-500 rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
-                    <i data-lucide="shield-check" class="text-white w-5 h-5"></i>
-                </div>
-                <div>
-                    <h1 class="text-base font-black tracking-wider text-slate-900 whitespace-nowrap hidden sm:block">極光智慧抽獎</h1>
-                    <span class="text-[9px] font-bold text-brand-600 bg-brand-50 px-1.5 py-0.2 rounded border border-brand-200 hidden sm:inline-block">公部門公信稽核模式</span>
-                </div>
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <!-- 直開相機 -->
+          <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelect(event)">
+          <button type="button" onclick="document.getElementById('cameraInput').click()" class="py-2.5 px-3 rounded-xl bg-slate-700/80 hover:bg-slate-700 border border-slate-600 text-xs font-medium flex items-center justify-center gap-1.5 active:scale-95 transition">
+            <i class="fa-solid fa-camera text-emerald-400"></i>
+            <span>相機現場拍照</span>
+          </button>
+
+          <!-- 相簿多選 (可批次選取多達 50 張) -->
+          <input type="file" id="galleryInput" accept="image/*" multiple class="hidden" onchange="handleFileSelect(event)">
+          <button type="button" onclick="document.getElementById('galleryInput').click()" class="py-2.5 px-3 rounded-xl bg-slate-700/80 hover:bg-slate-700 border border-slate-600 text-xs font-medium flex items-center justify-center gap-1.5 active:scale-95 transition">
+            <i class="fa-solid fa-photo-film text-teal-400"></i>
+            <span>從相簿多選 (至50張)</span>
+          </button>
+        </div>
+
+        <!-- 縮圖預覽網格 -->
+        <div id="photoGrid" class="grid grid-cols-4 gap-2 bg-slate-900/60 p-2 rounded-xl border border-slate-700/60 max-h-40 overflow-y-auto touch-scroll items-center">
+          <div id="emptyPhotoNotice" class="col-span-4 text-center text-slate-500 text-[11px] py-3">尚未選擇照片，可拍照或由相簿批次選取</div>
+        </div>
+      </div>
+
+      <!-- 即時上傳進度條 (預設隱藏，上傳時動態顯示) -->
+      <div id="uploadProgressBox" class="hidden bg-slate-900/80 p-3 rounded-xl border border-teal-500/40 space-y-1.5">
+        <div class="flex justify-between text-xs text-teal-300 font-medium">
+          <span id="uploadProgressText">準備上傳...</span>
+          <span id="uploadProgressPercent">0%</span>
+        </div>
+        <div class="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+          <div id="uploadProgressBar" class="bg-gradient-to-r from-teal-400 to-emerald-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- 備註說明 -->
+      <div>
+        <label class="block text-xs font-medium text-slate-300 mb-1">
+          <i class="fa-solid fa-pen-to-square text-emerald-400 mr-1"></i> 巡檢備註說明
+        </label>
+        <textarea id="inspectNotes" rows="2" placeholder="填寫現場狀況或修繕紀錄..." class="w-full bg-slate-700 border border-slate-600 text-white rounded-lg p-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"></textarea>
+      </div>
+
+      <!-- 重設為未巡檢 (防呆) -->
+      <div class="pt-1">
+        <button type="button" id="resetBtn" onclick="resetToUninspected()" class="w-full py-2 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 hover:bg-rose-900/60 active:scale-95 transition text-xs font-semibold flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-rotate-left"></i>
+          <span>回復為「未巡檢」狀態</span>
+        </button>
+      </div>
+
+      <!-- 送出按鈕 -->
+      <div class="flex gap-2 pt-2 border-t border-slate-700">
+        <button type="button" id="cancelBtn" onclick="closeInspectModal()" class="flex-1 py-2.5 rounded-xl bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition">取消</button>
+        <button type="button" id="saveBtn" onclick="submitInspectionRecord()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white text-xs font-bold hover:brightness-110 shadow-lg shadow-emerald-900/40 active:scale-95 transition flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <span>確認並同步</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // ⚙️ 正式後端 GAS Web 應用程式網址
+    // ==========================================
+    const GAS_ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbzJKjUHrWB3K3vEGRPS-cM4Iff0XkTsQ9_zvbCk9SZZcctHzo1mp6AMhmF8wTRe1nSv/exec"; 
+
+    let allData = [];
+    let filteredData = [];
+    let activeTownship = "ALL";
+    let activeItem = null;
+    let selectedImages = [];
+    let currentInspector = "";
+    let map, markerLayerGroup, userMarker = null;
+    let isSheetOpen = false;
+
+    function getItemTitle(item) {
+      return item["設置地點"] || item["單位"] || item["設置場址"] || item["設施名稱"] || "未命名地點";
+    }
+
+    function getItemAddress(item) {
+      return item["設置詳細地址"] || item["設置場址"] || item["地址"] || "無詳細地址";
+    }
+
+    function checkIsInspected(item) {
+      const inspectStatus = (item["巡檢狀態"] || "").toString().trim();
+      return inspectStatus === "已巡檢";
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      checkStoredInspector();
+    });
+
+    function checkStoredInspector() {
+      const savedName = localStorage.getItem('inspector_name');
+      if (savedName) {
+        currentInspector = savedName;
+        document.getElementById('headerInspectorName').textContent = currentInspector;
+        document.getElementById('welcomeScreen').classList.add('hidden');
+        loadDataFromGAS();
+      }
+    }
+
+    function startInspectionSession() {
+      const name = document.getElementById('welcomeInputName').value.trim();
+      if (!name) {
+        alert("請輸入巡檢人員姓名！");
+        return;
+      }
+      currentInspector = name;
+      localStorage.setItem('inspector_name', currentInspector);
+      document.getElementById('headerInspectorName').textContent = currentInspector;
+      document.getElementById('welcomeScreen').classList.add('hidden');
+      loadDataFromGAS();
+    }
+
+    function openChangeInspector() {
+      document.getElementById('welcomeInputName').value = currentInspector;
+      document.getElementById('welcomeScreen').classList.remove('hidden');
+    }
+
+    function initMap() {
+      map = L.map('map', { zoomControl: false }).setView([23.9098, 120.6853], 11);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; CartoDB & OpenStreetMap',
+        maxZoom: 19
+      }).addTo(map);
+      markerLayerGroup = L.layerGroup().addTo(map);
+      map.on('zoomend', updateTagVisibility);
+    }
+
+    function updateTagVisibility() {
+      const mapContainer = document.getElementById('map');
+      if (map.getZoom() >= 14) {
+        mapContainer.classList.add('show-tags');
+      } else {
+        mapContainer.classList.remove('show-tags');
+      }
+    }
+
+    function loadDataFromGAS() {
+      const sheetName = document.getElementById('sheetSelect').value;
+      const syncBadge = document.getElementById('syncBadge');
+
+      syncBadge.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin mr-1"></i> 讀取中';
+      fetch(`${GAS_ENDPOINT_URL}?sheet=${encodeURIComponent(sheetName)}`)
+        .then(res => res.json())
+        .then(res => {
+          if (res.status === 'success' && res.data) {
+            allData = res.data;
+            syncBadge.innerHTML = '<i class="fa-solid fa-circle text-[6px] animate-pulse mr-0.5"></i> 已連線';
+            renderApp();
+          } else {
+            alert("讀取失敗：" + res.message);
+          }
+        })
+        .catch(err => {
+          console.warn("GAS 連線失敗:", err);
+          syncBadge.innerHTML = '連線異常';
+        });
+    }
+
+    function renderApp() {
+      renderTownshipTabs();
+      applyFilters();
+    }
+
+    function renderTownshipTabs() {
+      const towns = ["ALL", ...new Set(allData.map(d => d["鄉鎮市"] || d["鄉鎮市區"]).filter(Boolean))];
+      const container = document.getElementById('townshipTabs');
+      container.innerHTML = "";
+
+      towns.forEach(town => {
+        const btn = document.createElement('button');
+        const isActive = (town === activeTownship);
+        btn.className = `shrink-0 px-3 py-1 rounded-full text-xs font-medium transition active:scale-95 ${
+          isActive 
+            ? 'bg-emerald-500 text-white shadow-md shadow-emerald-900/40 font-bold' 
+            : 'bg-slate-700/80 text-slate-300 hover:bg-slate-700'
+        }`;
+        btn.textContent = (town === "ALL") ? "全部鄉鎮" : town;
+        btn.onclick = () => {
+          activeTownship = town;
+          renderTownshipTabs();
+          applyFilters();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function applyFilters() {
+      const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+      
+      filteredData = allData.filter(item => {
+        const town = item["鄉鎮市"] || item["鄉鎮市區"] || "";
+        const title = getItemTitle(item).toLowerCase();
+        const address = getItemAddress(item).toLowerCase();
+        const id = (item["熄菸桶編號"] || "").toString().toLowerCase();
+        const inspector = (item["巡檢人員"] || "").toLowerCase();
+
+        const matchTown = (activeTownship === "ALL" || town === activeTownship);
+        const matchKey = !keyword || title.includes(keyword) || address.includes(keyword) || id.includes(keyword) || inspector.includes(keyword);
+        return matchTown && matchKey;
+      });
+
+      updateStatistics();
+      renderMapMarkers();
+      renderListView();
+      updateTagVisibility();
+    }
+
+    function updateStatistics() {
+      const total = filteredData.length;
+      const done = filteredData.filter(d => checkIsInspected(d)).length;
+      const pending = total - done;
+      const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+
+      document.getElementById('currentTownLabel').textContent = (activeTownship === "ALL") ? "全縣總覽" : activeTownship;
+      document.getElementById('progressPercent').textContent = `${percent}%`;
+      document.getElementById('progressBar').style.width = `${percent}%`;
+      document.getElementById('statDone').textContent = done;
+      document.getElementById('statPending').textContent = pending;
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('sheetCount').textContent = total;
+    }
+
+    function renderMapMarkers() {
+      markerLayerGroup.clearLayers();
+      const bounds = [];
+
+      filteredData.forEach(item => {
+        const lat = parseFloat(item["緯度"]);
+        const lng = parseFloat(item["經度"]);
+
+        if (!isNaN(lat) && !isNaN(lng)) {
+          bounds.push([lat, lng]);
+          const isDone = checkIsInspected(item);
+          const isMissing = (item["維護狀態"] === "零件缺失已更換");
+          const inspector = item["巡檢人員"] || "";
+          const title = getItemTitle(item);
+          const address = getItemAddress(item);
+          
+          let colorBg = isDone ? "#10b981" : (isMissing ? "#f59e0b" : "#ef4444");
+          const shortTitle = title.length > 8 ? title.slice(0, 8) + '...' : title;
+
+          let iconHtml = `
+            <div class="flex items-center gap-1" style="transform: translate(-10px, -10px);">
+              <div style="background-color: ${colorBg}; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); shrink-0;">
+                <i class="fa-solid fa-smoking"></i>
+              </div>
+              <span class="map-tag-label" style="background: rgba(15, 23, 42, 0.85); color: #f8fafc; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(51, 65, 85, 0.8); white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.3); pointer-events: none;">
+                ${shortTitle}
+              </span>
             </div>
-            <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3.5 max-w-4xl w-full justify-center z-20">
-                <div class="flex items-center gap-2 flex-shrink-0 select-none">
-                    <div class="w-8.5 h-8.5 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white flex-shrink-0 shadow-md">
-                        <i data-lucide="star" class="w-4.5 h-4.5 text-amber-200 fill-current animate-pulse"></i>
-                    </div>
-                    <span class="text-sm sm:text-base lg:text-lg font-black tracking-widest text-amber-800 whitespace-nowrap">抽獎主題：</span>
-                </div>
-                <input type="text" id="raffle-theme-input" value="綠點行動派 綠色場域推廣活動" oninput="updateThemeTitle()" class="flex-1 max-w-3xl bg-gradient-to-r from-amber-500/15 via-orange-500/5 to-white/40 border-2 border-amber-400/40 px-6 py-3 rounded-full shadow-lg shadow-amber-500/5 text-slate-950 font-black text-sm sm:text-lg md:text-xl tracking-wide focus:outline-none focus:ring-0 text-center placeholder-amber-700/40 min-w-0 transition-all" placeholder="請鍵入抽獎活動主題...">
-            </div>
-            <div class="w-80 flex items-center justify-end gap-2 flex-shrink-0 z-10">
-                <button id="record-auth-btn" onclick="authorizeRecording()" class="px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 flex items-center gap-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 transition-all shadow-sm">
-                    <span id="record-dot" class="w-2 h-2 rounded-full bg-rose-500"></span> <span id="record-text">點此授權錄影</span>
+          `;
+
+          const customIcon = L.divIcon({
+            html: iconHtml,
+            className: 'custom-div-icon',
+            iconSize: [120, 24],
+            iconAnchor: [11, 11]
+          });
+
+          const marker = L.marker([lat, lng], { icon: customIcon }).addTo(markerLayerGroup);
+
+          marker.bindPopup(`
+            <div class="p-1 text-slate-800 font-sans" style="min-width: 200px;">
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">${item["鄉鎮市"] || item["鄉鎮市區"] || ""}</span>
+                ${isDone ? `<span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200"><i class="fa-solid fa-user text-[9px] mr-0.5"></i>${inspector || '已巡檢'}</span>` : `<span class="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">未巡檢</span>`}
+              </div>
+              <h4 class="font-bold text-sm text-slate-900">${title}</h4>
+              <p class="text-xs text-slate-500 mb-2 truncate">${address}</p>
+              
+              <div class="text-xs py-1 px-2 rounded bg-slate-100 mb-2 flex justify-between">
+                <span>巡檢：<b>${isDone ? "已巡檢" : "未巡檢"}</b></span>
+                <span class="text-slate-500">${item["巡檢/調查日期"] ? item["巡檢/調查日期"].toString().slice(0,10) : "尚未回報"}</span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-1.5">
+                <button onclick='openDetailModal(${JSON.stringify(item)})' class="py-1.5 bg-slate-800 text-white rounded-lg text-xs font-semibold active:scale-95 transition">
+                  <i class="fa-solid fa-circle-info mr-0.5"></i> 詳細規格
                 </button>
-                <div id="conn-status" class="px-3 py-2 rounded-lg bg-slate-100 border border-slate-200 flex items-center gap-1.5 text-xs font-bold text-slate-600 shadow-sm">
-                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> 偵測中...
-                </div>
-                <button onclick="toggleModal('settings-modal')" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg transition-all shadow-sm" title="系統設定">
-                    <i data-lucide="settings" class="w-4.5 h-4.5"></i>
+                <button onclick='openInspectModal(${JSON.stringify(item)})' class="py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold active:scale-95 transition">
+                  <i class="fa-solid fa-clipboard-check mr-0.5"></i> 巡檢回報
                 </button>
+              </div>
             </div>
-        </header>
-
-        <!-- 主佈局 -->
-        <main class="grid grid-cols-1 lg:grid-cols-[17fr_23fr_43fr_17fr] gap-4 flex-1 min-h-0 lg:overflow-hidden mb-1 overflow-y-auto lg:overflow-y-hidden">
-            
-            <!-- 第一欄：抽獎名冊 -->
-            <aside class="col-span-1 flex flex-col min-h-[250px] lg:min-h-0 lg:h-full overflow-hidden">
-                <div class="bg-white border border-slate-200/60 rounded-2xl p-3 shadow-sm flex flex-col h-full min-h-0 overflow-hidden">
-                    <div class="flex items-center justify-between mb-2 flex-shrink-0 gap-1">
-                        <h2 class="text-xs font-black text-slate-800 tracking-wider uppercase flex items-center gap-1 whitespace-nowrap">
-                            <i data-lucide="users" class="w-3.5 h-3.5 text-brand-500"></i> 抽獎名冊
-                        </h2>
-                        <button onclick="toggleModal('data-management-modal'); switchDataTab('participants')" class="flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-black bg-brand-50 text-brand-700 hover:bg-brand-100 border border-brand-200 rounded-lg transition-all shadow-sm">
-                            <i data-lucide="plus" class="w-3 h-3"></i> 匯入
-                        </button>
-                    </div>
-                    <div class="space-y-2 flex-1 flex flex-col min-h-0 overflow-hidden">
-                        <div class="flex flex-col gap-1 flex-shrink-0">
-                            <div class="flex items-center justify-between gap-1.5">
-                                <input type="text" id="preview-search" oninput="renderPreviewList()" placeholder="🔍 全域搜尋姓名/電話/發票..." class="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-1 text-[11px] text-slate-800 focus:outline-none focus:border-brand-500/50 focus:bg-white transition-all">
-                            </div>
-                            <div class="flex items-center justify-between text-[9px] px-1 text-slate-500">
-                                <span>母體總數：<strong id="p-count" class="text-brand-600 font-black">0 筆</strong></span>
-                                <span id="render-limit-hint" class="text-slate-400">完整載入中</span>
-                            </div>
-                        </div>
-                        <div id="preview-header-row" class="flex-shrink-0"></div>
-                        <div id="preview-list" class="flex-1 overflow-y-auto space-y-1.5 no-scrollbar pr-0.5">
-                            <div class="text-slate-400 text-center py-4 italic text-[11px]">暫無載入名單</div>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- 第二欄：獎項清單 -->
-            <aside class="col-span-1 flex flex-col min-h-[250px] lg:min-h-0 lg:h-full overflow-hidden">
-                <div class="bg-white border border-slate-200/60 rounded-2xl p-3 shadow-sm flex flex-col h-full min-h-0 overflow-hidden">
-                    <div class="flex-shrink-0 mb-2">
-                        <div class="flex items-center justify-between mb-1.5">
-                            <h2 class="text-xs font-black text-slate-800 tracking-wider uppercase flex items-center gap-1">
-                                <i data-lucide="gift" class="w-3.5 h-3.5 text-amber-500"></i> 獎項清單
-                            </h2>
-                        </div>
-                        <div class="grid grid-cols-2 gap-1.5">
-                            <button onclick="generateDefaultPrizes()" class="py-1 text-[10px] font-black bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-md transition-all shadow-sm flex items-center justify-center gap-1">
-                                <i data-lucide="wand-2" class="w-3 h-3 text-amber-500"></i> 產生預設
-                            </button>
-                            <button onclick="toggleModal('data-management-modal'); switchDataTab('prizes')" class="py-1 text-[10px] font-black bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-md transition-all shadow-sm flex items-center justify-center gap-1">
-                                <i data-lucide="edit-3" class="w-3 h-3 text-brand-500"></i> 編輯獎項
-                            </button>
-                        </div>
-                    </div>
-                    <div id="sidebar-prize-list" class="flex-1 overflow-y-auto space-y-1.5 no-scrollbar pr-0.5 text-xs font-bold text-slate-700">
-                        <div class="text-slate-400 text-center py-6 italic text-[11px]">暫無獎項設定</div>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- 第三欄：抽獎核心舞台 -->
-            <section class="col-span-1 flex flex-col min-h-[450px] lg:min-h-0 lg:h-full overflow-hidden">
-                <div class="flex-1 bg-white border border-slate-200/60 rounded-[28px] p-4 lg:p-5 shadow-xl shadow-slate-200/80 flex flex-col items-center justify-between min-h-0 overflow-hidden relative">
-                    <div class="w-full bg-slate-50 border border-slate-200/60 p-2.5 rounded-xl flex items-center justify-between gap-2 flex-shrink-0 font-bold">
-                        <div class="flex items-center gap-3">
-                            <label class="flex items-center gap-1.5 cursor-pointer select-none">
-                                <input type="checkbox" id="single-draw-toggle" checked onchange="toggleSingleDrawMode()" class="w-4 h-4 rounded border-slate-300 bg-white text-brand-500 focus:ring-brand-500 shadow-sm">
-                                <span id="single-draw-label" class="text-xs font-black text-slate-900 uppercase tracking-wider whitespace-nowrap transition-colors">單品項抽獎</span>
-                            </label>
-                            <div class="flex items-center gap-1.5">
-                                <span id="draw-num-label" class="text-xs font-bold text-slate-600 whitespace-nowrap transition-colors">單次人數</span>
-                                <input type="number" id="draw-num" value="1" min="1" class="w-12 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-center text-slate-800 font-bold focus:outline-none focus:border-brand-500 transition-all shadow-sm">
-                            </div>
-                        </div>
-                        <div class="h-4 w-px bg-slate-300"></div>
-                        <label class="flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" id="dup-check" checked class="w-4 h-4 rounded border-slate-300 bg-white text-brand-500 focus:ring-brand-500 shadow-sm">
-                            <span class="text-xs font-bold text-slate-600 whitespace-nowrap">重複過濾</span>
-                        </label>
-                    </div>
-                    <div id="marquee-box" class="w-full flex-1 flex flex-col justify-between min-h-0 py-1">
-                        <div class="text-slate-400 text-center text-sm font-medium italic mt-12">準備啟動雲端抽獎系統...</div>
-                    </div>
-                    <div class="w-full flex-shrink-0 pt-3 border-t border-slate-100">
-                        <div class="grid grid-cols-2 gap-3.5">
-                            <button id="draw-btn" onclick="toggleDraw()" class="w-full py-3.5 bg-gradient-to-r from-brand-600 to-brand-800 hover:from-brand-500 hover:to-brand-700 text-white font-black text-sm lg:text-base rounded-xl shadow-lg shadow-brand-900/15 transition-all flex items-center justify-center gap-2 group truncate">
-                                <i data-lucide="play" class="w-4 h-4 fill-current group-hover:scale-110 transition-transform flex-shrink-0"></i> 
-                                <span id="btn-text" class="truncate">開始抽獎</span>
-                            </button>
-                            <button id="grand-draw-btn" onclick="toggleGrandDraw()" class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-black text-sm lg:text-base rounded-xl shadow-md shadow-amber-600/10 transition-all flex items-center justify-center gap-2 group truncate">
-                                <i data-lucide="zap" class="w-4 h-4 fill-current text-yellow-200 animate-pulse flex-shrink-0"></i>
-                                <span id="grand-btn-text" class="truncate">⚡ 一次抽選全部獎項</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 第四欄：中獎清單 -->
-            <aside class="col-span-1 flex flex-col min-h-[300px] lg:min-h-0 lg:h-full overflow-hidden">
-                <div class="flex-1 bg-white border border-slate-200/60 rounded-2xl p-3 shadow-sm flex flex-col h-full min-h-0 overflow-hidden">
-                    <div class="flex items-center justify-between mb-2 border-b border-slate-200 pb-2 flex-shrink-0 select-none">
-                        <div class="flex items-center gap-1.5">
-                            <h2 class="text-xs font-black uppercase text-amber-600 tracking-widest flex items-center gap-1">
-                                <i data-lucide="trophy" class="w-3.5 h-3.5 text-amber-500"></i> 中獎清單
-                            </h2>
-                            <span id="win-cnt" class="text-xs font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">0</span>
-                        </div>
-                        <button onclick="exportWinnersToExcel()" class="flex items-center gap-1 px-2 py-0.5 text-[10px] font-black bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all shadow-sm" title="匯出中獎名單 Excel">
-                            <i data-lucide="file-spreadsheet" class="w-3 h-3 text-emerald-600"></i> 匯出
-                        </button>
-                    </div>
-                    <div id="win-log" class="flex-1 overflow-y-auto space-y-1.5 no-scrollbar pr-0.5"></div>
-                    <div class="mt-2 flex-shrink-0">
-                        <button onclick="clearAll()" class="w-full py-1.5 text-xs font-black bg-slate-100 text-slate-600 border border-slate-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all rounded-lg">重置紀錄</button>
-                    </div>
-                </div>
-            </aside>
-        </main>
-    </div>
-
-    <!-- 手動管理與數據匯入彈窗 -->
-    <div id="data-management-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-6 backdrop-blur-xl bg-slate-900/30">
-        <div class="bg-white border border-slate-200 rounded-[32px] p-8 max-w-2xl w-full shadow-3xl flex flex-col max-h-[90vh]">
-            <h3 class="text-xl font-black mb-4 text-slate-950 uppercase tracking-tighter flex items-center gap-2 flex-shrink-0">
-                <i data-lucide="database" class="w-6 h-6 text-brand-500"></i> 手動匯入與自訂鍵入
-            </h3>
-            <div class="flex border-b border-slate-200 mb-4 flex-shrink-0">
-                <button onclick="switchDataTab('participants')" id="tab-btn-participants" class="flex-1 py-2.5 text-xs font-black text-center border-b-2 border-brand-500 text-brand-600 transition-all">👥 參加名冊管理</button>
-                <button onclick="switchDataTab('prizes')" id="tab-btn-prizes" class="flex-1 py-2.5 text-xs font-black text-center border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all">🎁 獎項清單管理</button>
-            </div>
-            <div id="tab-content-participants" class="space-y-4 flex-1 flex flex-col min-h-0 overflow-y-auto">
-                <div id="drop-zone-participants" class="border-2 border-dashed border-slate-200 hover:border-brand-500 bg-slate-50/50 hover:bg-slate-50/20 p-5 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group flex-shrink-0 shadow-inner">
-                    <i data-lucide="upload-cloud" class="w-8 h-8 text-slate-400 group-hover:text-brand-500 transition-colors"></i>
-                    <span class="text-xs font-black text-slate-700">拖曳 Excel / CSV / TXT 檔案至此，或 <span class="text-brand-600 hover:underline">點此瀏覽檔案</span></span>
-                    <span class="text-[10px] text-slate-400">支援解析欄位：姓名、身分證字號、聯絡電話、發票號碼、權重、電子信箱、備註</span>
-                    <input type="file" id="file-input-participants" class="hidden" accept=".xlsx,.xls,.csv,.txt">
-                </div>
-                <div class="flex items-center gap-2 flex-shrink-0">
-                    <div class="h-px bg-slate-200 flex-1"></div>
-                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">或直接鍵入</span>
-                    <div class="h-px bg-slate-200 flex-1"></div>
-                </div>
-                <textarea id="manual-participants-text" placeholder="林宥嘉   A123456789   0912345678   FA12345678   1   user@test.com   VIP&#10;陳美蓉   B987654321   0987654321   FA87654321   2   test2@test.com" class="w-full flex-1 min-h-[120px] bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs font-mono focus:outline-none focus:bg-white focus:border-brand-500 transition-all focus:ring-1 focus:ring-brand-500 resize-none"></textarea>
-                <div class="flex justify-end gap-3 flex-shrink-0">
-                    <button onclick="toggleModal('data-management-modal')" class="py-2.5 px-5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl border border-slate-200 transition-all">取消</button>
-                    <button onclick="importParticipantsManually()" class="py-2.5 px-6 bg-brand-600 hover:bg-brand-500 text-white text-xs font-black rounded-xl transition-all shadow-md shadow-brand-500/10">📥 解析並匯入名冊</button>
-                </div>
-            </div>
-            <div id="tab-content-prizes" class="space-y-4 flex-1 flex flex-col min-h-0 hidden overflow-y-auto">
-                <div id="drop-zone-prizes" class="border-2 border-dashed border-slate-200 hover:border-amber-500 bg-slate-50/50 hover:bg-slate-50/20 p-5 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group flex-shrink-0 shadow-inner">
-                    <i data-lucide="upload-cloud" class="w-8 h-8 text-slate-400 group-hover:text-amber-500 transition-colors"></i>
-                    <span class="text-xs font-black text-slate-700">拖曳 獎項清單檔案 至此，或 <span class="text-amber-600 hover:underline">點此瀏覽檔案</span></span>
-                    <span class="text-[10px] text-slate-400">格式範例：Apple AirPods Pro 3 ...... 1名  (或是 獎項名稱, 數量 結構)</span>
-                    <input type="file" id="file-input-prizes" class="hidden" accept=".xlsx,.xls,.csv,.txt">
-                </div>
-                <div class="flex items-center gap-2 flex-shrink-0">
-                    <div class="h-px bg-slate-200 flex-1"></div>
-                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">或直接鍵入</span>
-                    <div class="h-px bg-slate-200 flex-1"></div>
-                </div>
-                <textarea id="manual-prizes-text" placeholder="Apple AirPods Pro 3 ...... 1名&#10;HERAN無線手持吸塵器 ...... 2名&#10;Panasonic 12吋立扇 ...... 2名&#10;Shine Trip 坦途露營車 ...... 3名&#10;COTD保溫杯 ...... 5名" class="w-full flex-1 min-h-[120px] bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs font-mono focus:outline-none focus:bg-white focus:border-brand-500 transition-all focus:ring-1 focus:ring-brand-500 resize-none"></textarea>
-                <div class="flex justify-end gap-3 flex-shrink-0">
-                    <button onclick="toggleModal('data-management-modal')" class="py-2.5 px-5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl border border-slate-200 transition-all">取消</button>
-                    <button onclick="importPrizesManually()" class="py-2.5 px-6 bg-amber-600 hover:bg-amber-500 text-white text-xs font-black rounded-xl transition-all shadow-md shadow-amber-500/10">📥 解析並匯入獎項清單</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 系統設定彈窗 -->
-    <div id="settings-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-6 backdrop-blur-xl bg-slate-900/30">
-        <div class="bg-white border border-slate-200 rounded-[40px] p-8 max-w-2xl w-full shadow-3xl flex flex-col max-h-[90vh]">
-            <h3 class="text-2xl font-black mb-4 text-slate-950 uppercase tracking-tighter flex items-center gap-2 flex-shrink-0">
-                <i data-lucide="sliders" class="w-6 h-6 text-brand-500"></i> 系統整合設定
-            </h3>
-            <div class="flex-1 overflow-y-auto space-y-6 pr-1 min-h-0">
-                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 font-mono text-[11px] text-emerald-400">
-                    <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
-                        <span class="font-black text-slate-400 flex items-center gap-1">
-                            <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span> 雲端 API 實時連線診斷日誌
-                        </span>
-                        <button onclick="document.getElementById('diagnostic-log').innerText = '無偵測動作';" class="text-slate-500 hover:text-slate-300">清除</button>
-                    </div>
-                    <div id="diagnostic-log" class="max-h-[80px] overflow-y-auto space-y-1 text-slate-300 select-text">
-                        初始化抽獎系統監聽中...
-                    </div>
-                </div>
-                <div class="space-y-2">
-                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Google Apps Script 應用程式網址</label>
-                    <input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/..." class="w-full bg-slate-100 border border-slate-200 rounded-2xl px-5 py-3 text-sm text-slate-800 focus:outline-none focus:border-brand-500 focus:bg-white transition-all font-mono font-bold">
-                </div>
-
-                <!-- 進階規則配置 -->
-                <div class="border-t border-slate-200 pt-4 space-y-3">
-                    <h4 class="text-xs font-black text-slate-700 uppercase tracking-wider">進階規則配置 (Feature Toggles)</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <label class="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-2xl cursor-pointer hover:bg-amber-100 transition-all select-none col-span-2 shadow-sm">
-                            <input type="checkbox" id="option-b-check" checked class="w-5 h-5 rounded border-amber-300 bg-white text-brand-600 focus:ring-brand-500">
-                            <div class="text-left">
-                                <span class="text-xs font-black text-amber-900 block">啟用方案 B：硬性權重排序 (僅影響單品項抽獎)</span>
-                                <span class="text-[10px] text-amber-700 font-normal">單品項抽獎時大獎優先配給高權重。一次抽全部則依下方各獎項設定。</span>
-                            </div>
-                        </label>
-                        <label class="flex items-center gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all select-none shadow-sm">
-                            <input type="checkbox" id="cross-exclude-check" checked class="w-4 h-4 rounded border-slate-300 bg-white text-brand-500 focus:ring-brand-500">
-                            <span class="text-xs font-bold text-slate-700">跨獎項排除中獎者</span>
-                        </label>
-                        <label class="flex items-center gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all select-none shadow-sm">
-                            <input type="checkbox" id="fast-mode-check" class="w-4 h-4 rounded border-slate-300 bg-white text-brand-500 focus:ring-brand-500">
-                            <span class="text-xs font-bold text-slate-700">快速模式 (跳過動畫)</span>
-                        </label>
-                        <label class="flex items-center gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all select-none shadow-sm">
-                            <input type="checkbox" id="sound-check" checked class="w-4 h-4 rounded border-slate-300 bg-white text-brand-500 focus:ring-brand-500">
-                            <span class="text-xs font-bold text-slate-700">啟用離線合成音效</span>
-                        </label>
-                        <label class="flex items-center gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all select-none shadow-sm">
-                            <input type="checkbox" id="serial-number-check" checked class="w-4 h-4 rounded border-slate-300 bg-white text-brand-500 focus:ring-brand-500">
-                            <span class="text-xs font-bold text-slate-700">中獎顯示 No. 流水號</span>
-                        </label>
-                        <label class="flex items-center gap-2.5 p-3 bg-slate-50 border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all select-none shadow-sm">
-                            <input type="checkbox" id="raw-weight-check" class="w-4 h-4 rounded border-slate-200 bg-white text-brand-500 focus:ring-brand-500">
-                            <span class="text-[11px] font-bold text-slate-500">使用原始數值為權重</span>
-                        </label>
-                        <label class="flex items-center gap-2.5 p-3 bg-slate-50 border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all select-none shadow-sm">
-                            <input type="checkbox" id="power-weight-check" class="w-4 h-4 rounded border-slate-200 bg-white text-brand-500 focus:ring-brand-500">
-                            <span class="text-[11px] font-bold text-slate-500">啟用權重二次方極限放大</span>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- 各獎項抽取策略設定 -->
-                <div class="border-t border-slate-200 pt-4 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <h4 class="text-xs font-black text-slate-700 uppercase tracking-wider">🎁 各獎項抽取策略設定 (僅影響「一次抽全部」)</h4>
-                        <span class="text-[10px] text-slate-400">勾選 = 權重抽選，未勾選 = 純隨機</span>
-                    </div>
-                    <div id="prize-weight-settings-container" class="max-h-[150px] overflow-y-auto space-y-2 pr-1"></div>
-                    <p class="text-[10px] text-slate-400 italic">* 此設定僅在點擊「一次抽選全部獎項」時生效，不影響手動單品項抽獎。</p>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4 pt-3">
-                    <button onclick="syncGas()" class="py-3 bg-slate-100 text-slate-700 text-sm font-black rounded-2xl border border-slate-200 hover:bg-slate-200 transition-all">測試與同步</button>
-                    <button onclick="saveSettings()" class="py-3 bg-brand-600 text-white text-sm font-black rounded-2xl hover:bg-brand-500 transition-all">確認並儲存</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 確認清除彈窗 -->
-    <div id="confirm-clear-modal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[999] hidden flex items-center justify-center p-4">
-        <div class="bg-white border border-slate-200 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center">
-            <div class="w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-100">
-                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
-            </div>
-            <h3 class="text-base font-bold text-slate-900 mb-2">確定清除中獎紀錄？</h3>
-            <p class="text-xs text-slate-500 mb-6">此動作將一併重置雲端配置與本地端儲存的所有得獎資料，且無法復原。</p>
-            <div class="flex gap-3">
-                <button onclick="closeConfirmModal()" class="flex-1 py-2 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">取消</button>
-                <button onclick="executeClear()" class="flex-1 py-2 bg-rose-600 text-white text-xs font-bold rounded-xl hover:bg-rose-500 transition-all">確認重置</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // ---------- 本地快取防爆包裝器 ----------
-        function safeLocalStorageSet(key, value) {
-            try {
-                localStorage.setItem(key, value);
-            } catch (e) {
-                console.warn(`LocalStorage 存檔受限 (${key}): 容量已滿或被限制，將降級為記憶體暫存模式。`, e);
-            }
+          `);
         }
+      });
 
-        // ---------- 全域狀態與診斷日誌 ----------
-        function logDiagnostic(msg, isError = false) {
-            const el = document.getElementById('diagnostic-log');
-            if (!el) return;
-            const time = new Date().toLocaleTimeString();
-            const colorClass = isError ? 'text-rose-400' : 'text-emerald-400';
-            const logItem = `<div class="${colorClass}">[${time}] ${msg}</div>`;
-            el.innerHTML = logItem + el.innerHTML;
-        }
+      if (bounds.length > 0 && activeTownship !== "ALL") {
+        map.fitBounds(bounds, { padding: [40, 40] });
+      }
+    }
 
-        const audio = {
-            ctx: null,
-            init() {
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-            },
-            playTick() {
-                if (!document.getElementById('sound-check').checked) return;
-                try {
-                    this.init();
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(450, this.ctx.currentTime);
-                    gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.02);
-                    osc.start();
-                    osc.stop(this.ctx.currentTime + 0.02);
-                } catch(e) {}
-            },
-            playTada() {
-                if (!document.getElementById('sound-check').checked) return;
-                try {
-                    this.init();
-                    const now = this.ctx.currentTime;
-                    const playHorn = (freq, delay, duration, vol) => {
-                        const osc1 = this.ctx.createOscillator();
-                        const osc2 = this.ctx.createOscillator();
-                        const filter = this.ctx.createBiquadFilter();
-                        const gain = this.ctx.createGain();
-                        osc1.connect(filter);
-                        osc2.connect(filter);
-                        filter.connect(gain);
-                        gain.connect(this.ctx.destination);
-                        osc1.type = 'sawtooth';
-                        osc2.type = 'triangle';
-                        osc1.frequency.setValueAtTime(freq, now + delay);
-                        osc2.frequency.setValueAtTime(freq * 1.005, now + delay);
-                        filter.type = 'lowpass';
-                        filter.frequency.setValueAtTime(1000, now + delay);
-                        filter.frequency.exponentialRampToValueAtTime(400, now + delay + duration);
-                        gain.gain.setValueAtTime(0.05, now + delay);
-                        gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + duration);
-                        osc1.start(now + delay);
-                        osc2.start(now + delay);
-                        osc1.stop(now + delay + duration);
-                        osc2.stop(now + delay + duration);
-                    };
-                    playHorn(261.63, 0.0, 0.25, 0.1);
-                    playHorn(329.63, 0.0, 0.25, 0.1);
-                    playHorn(392.00, 0.0, 0.25, 0.1);
-                    playHorn(349.23, 0.2, 0.25, 0.1);
-                    playHorn(440.00, 0.2, 0.25, 0.1);
-                    playHorn(523.25, 0.2, 0.25, 0.1);
-                    playHorn(392.00, 0.4, 0.8, 0.15);
-                    playHorn(493.88, 0.4, 0.8, 0.15);
-                    playHorn(587.33, 0.4, 0.8, 0.15);
-                    playHorn(783.99, 0.4, 0.8, 0.15);
-                } catch(e) {}
+    function renderListView() {
+      const container = document.getElementById('facilityListContainer');
+      container.innerHTML = "";
+
+      if (filteredData.length === 0) {
+        container.innerHTML = '<div class="text-center py-10 text-slate-500 text-xs">查無符合條件的設施點位</div>';
+        return;
+      }
+
+      filteredData.forEach(item => {
+        const isDone = checkIsInspected(item);
+        const countMain = parseInt(item["設置熄菸桶數量(支)"] || item["設置數量(支)"] || item["設置數量"] || 1, 10);
+        const countOther = item["其他熄菸設施(個)"] !== undefined && item["其他熄菸設施(個)"] !== "" ? parseInt(item["其他熄菸設施(個)"], 10) : null;
+        const total = countOther !== null ? (countMain + countOther) : countMain;
+        
+        const title = getItemTitle(item);
+        const address = getItemAddress(item);
+        const inspector = item["巡檢人員"] || "";
+
+        const card = document.createElement('div');
+        card.className = "bg-slate-700/60 border border-slate-600/80 rounded-xl p-3 flex justify-between items-center active:bg-slate-700 transition cursor-pointer";
+        card.onclick = () => openDetailModal(item);
+
+        card.innerHTML = `
+          <div class="flex-1 pr-2">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] px-1.5 py-0.5 rounded font-bold ${isDone ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}">
+                ${isDone ? "已巡檢" : "未巡檢"}
+              </span>
+              <span class="text-xs font-bold text-slate-100 truncate max-w-[140px]">${title}</span>
+              <span class="text-[10px] text-teal-300 bg-slate-800 px-1 py-0.5 rounded">${total} 支</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1 truncate">${address}</p>
+            <div class="text-[10px] text-slate-500 mt-1 flex flex-wrap gap-2 items-center">
+              <span><i class="fa-regular fa-calendar"></i> ${item["巡檢/調查日期"] || "尚未回報"}</span>
+              ${isDone && inspector ? `<span class="text-emerald-400 bg-slate-800/80 px-1.5 py-0.2 rounded border border-emerald-900/60"><i class="fa-solid fa-user text-[9px] mr-0.5"></i>${inspector}</span>` : ""}
+              ${item["維護狀態"] ? `<span class="text-slate-400">(${item["維護狀態"]})</span>` : ""}
+              ${item["備註"] ? `<span class="text-amber-400/80 truncate max-w-[90px]"><i class="fa-solid fa-note-sticky"></i> ${item["備註"]}</span>` : ""}
+            </div>
+          </div>
+          
+          <div class="flex flex-col gap-1.5 shrink-0" onclick="event.stopPropagation()">
+            <button onclick='openDetailModal(${JSON.stringify(item)})' class="px-3 py-1.5 bg-slate-600 text-slate-200 rounded-lg text-xs font-medium active:scale-95 transition flex items-center justify-center gap-1">
+              <i class="fa-solid fa-circle-info"></i> 詳情
+            </button>
+            <button onclick='openInspectModal(${JSON.stringify(item)})' class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-medium active:scale-95 transition flex items-center justify-center gap-1">
+              <i class="fa-solid fa-check"></i> 回報
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function openDetailModal(item) {
+      activeItem = item;
+      const town = item["鄉鎮市"] || item["鄉鎮市區"] || "南投縣";
+      const isDone = checkIsInspected(item);
+      const status = isDone ? "已巡檢" : "未巡檢";
+      const lat = parseFloat(item["緯度"]);
+      const lng = parseFloat(item["經度"]);
+      const inspector = item["巡檢人員"] || "尚未巡檢";
+      const title = getItemTitle(item);
+      const address = getItemAddress(item);
+      
+      document.getElementById('detailTownBadge').textContent = town;
+      document.getElementById('detailStatusBadge').textContent = status;
+      document.getElementById('detailStatusBadge').className = `text-[10px] font-bold px-2 py-0.5 rounded ${isDone ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}`;
+      document.getElementById('detailTitle').textContent = title;
+      document.getElementById('detailAddress').innerHTML = `<i class="fa-solid fa-location-dot text-rose-400 mr-1"></i> ${address}`;
+      document.getElementById('detailInspector').textContent = isDone ? inspector : "未巡檢";
+      document.getElementById('detailHardwareStatus').textContent = item["維護狀態"] || "正常使用";
+
+      const countMain = parseInt(item["設置熄菸桶數量(支)"] || item["設置數量(支)"] || item["設置數量"] || 1, 10);
+      const hasOther = item["其他熄菸設施(個)"] !== undefined && item["其他熄菸設施(個)"] !== "";
+      const countContainer = document.getElementById('detailCountContainer');
+
+      if (hasOther) {
+        const countOther = parseInt(item["其他熄菸設施(個)"], 10) || 0;
+        const total = countMain + countOther;
+        countContainer.innerHTML = `
+          <div class="grid grid-cols-3 gap-2 bg-slate-900/60 border border-slate-700/80 p-3 rounded-xl text-center">
+            <div>
+              <div class="text-[10px] text-slate-400">設置數量 (支)</div>
+              <div class="text-base font-bold text-emerald-400 mt-0.5">${countMain} 支</div>
+            </div>
+            <div class="border-x border-slate-700">
+              <div class="text-[10px] text-slate-400">其他設施 (個)</div>
+              <div class="text-base font-bold text-amber-400 mt-0.5">${countOther} 個</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400">總數量</div>
+              <div class="text-base font-bold text-teal-300 mt-0.5">${total} 處</div>
+            </div>
+          </div>
+        `;
+      } else {
+        countContainer.innerHTML = `
+          <div class="bg-slate-900/60 border border-slate-700/80 p-3 rounded-xl text-center flex justify-around items-center">
+            <div>
+              <div class="text-[11px] text-slate-400">設置熄菸桶數量</div>
+              <div class="text-xl font-bold text-emerald-400 mt-0.5">${countMain} <span class="text-xs text-slate-300">支</span></div>
+            </div>
+          </div>
+        `;
+      }
+
+      document.getElementById('detailId').textContent = item["熄菸桶編號"] || item.id || "-";
+      document.getElementById('detailType').textContent = item["店家類型"] || item["設置地點類型"] || "未分類";
+      document.getElementById('detailInspectDate').textContent = item["巡檢/調查日期"] || "尚未巡檢";
+      
+      if (!isNaN(lat) && !isNaN(lng)) {
+        document.getElementById('detailCoordinates').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      } else {
+        document.getElementById('detailCoordinates').textContent = "未提供座標 (使用地址導航)";
+      }
+
+      document.getElementById('detailNotes').textContent = item["備註"] || item["備註說明"] || "無特殊備註說明";
+      document.getElementById('detailModal').classList.remove('hidden');
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detailModal').classList.add('hidden');
+      window.scrollTo(0, 0);
+    }
+
+    function navCurrentDetail() {
+      if (!activeItem) return;
+      const lat = parseFloat(activeItem["緯度"]);
+      const lng = parseFloat(activeItem["經度"]);
+      const address = getItemAddress(activeItem);
+      let target = (!isNaN(lat) && !isNaN(lng)) ? `${lat},${lng}` : encodeURIComponent(address);
+      if (!target || target === "無詳細地址") {
+        alert("該地點缺乏座標及詳細地址資訊");
+        return;
+      }
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${target}`, '_blank');
+    }
+
+    function openInspectFromDetail() {
+      closeDetailModal();
+      if (activeItem) openInspectModal(activeItem);
+    }
+
+    function openInspectModal(item) {
+      activeItem = item;
+      selectedImages = [];
+      renderPhotoGrid();
+      
+      // 隱藏進度條
+      document.getElementById('uploadProgressBox').classList.add('hidden');
+      document.getElementById('uploadProgressBar').style.width = '0%';
+      setButtonsDisabled(false);
+
+      document.getElementById('modalTownBadge').textContent = item["鄉鎮市"] || item["鄉鎮市區"] || "南投縣";
+      document.getElementById('modalPlaceTitle').textContent = getItemTitle(item);
+      document.getElementById('modalAddress').textContent = getItemAddress(item);
+      document.getElementById('inspectStatus').value = item["維護狀態"] || "正常使用";
+      document.getElementById('inspectNotes').value = "";
+      document.getElementById('inspectorInput').value = currentInspector || item["巡檢人員"] || "";
+
+      document.getElementById('cameraInput').value = "";
+      document.getElementById('galleryInput').value = "";
+
+      document.getElementById('inspectModal').classList.remove('hidden');
+    }
+
+    function closeInspectModal() {
+      document.getElementById('inspectModal').classList.add('hidden');
+      window.scrollTo(0, 0);
+    }
+
+    function setButtonsDisabled(disabled) {
+      document.getElementById('saveBtn').disabled = disabled;
+      document.getElementById('cancelBtn').disabled = disabled;
+      document.getElementById('resetBtn').disabled = disabled;
+    }
+
+    // ==========================================
+    // 循序高畫質保真壓縮 (最高支援 50 張)
+    // ==========================================
+    function compressSingleFile(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const maxDim = 1200;
+            let w = img.width, h = img.height;
+
+            if (w > h && w > maxDim) {
+              h = Math.round((maxDim / w) * h);
+              w = maxDim;
+            } else if (h > maxDim) {
+              w = Math.round((maxDim / h) * w);
+              h = maxDim;
             }
+
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.65));
+          };
+          img.src = e.target.result;
         };
+        reader.readAsDataURL(file);
+      });
+    }
 
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            if(!container) return;
-            const toast = document.createElement('div');
-            toast.className = `px-4 py-3 rounded-xl shadow-2xl text-xs font-bold flex items-center gap-2 border transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto`;
-            if (type === 'success') {
-                toast.className += ' bg-emerald-50 border-emerald-200 text-emerald-800';
-                toast.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4"></i> <span>${message}</span>`;
-            } else if (type === 'error') {
-                toast.className += ' bg-rose-50 border-rose-200 text-rose-800';
-                toast.innerHTML = `<i data-lucide="alert-triangle" class="w-4 h-4"></i> <span>${message}</span>`;
-            } else {
-                toast.className += ' bg-slate-100 border-slate-200 text-slate-800';
-                toast.innerHTML = `<i data-lucide="info" class="w-4 h-4"></i> <span>${message}</span>`;
-            }
-            container.appendChild(toast);
-            lucide.createIcons();
-            setTimeout(() => { toast.classList.remove('translate-y-2', 'opacity-0'); }, 50);
-            setTimeout(() => { toast.classList.add('translate-y-[-10px]', 'opacity-0'); setTimeout(() => toast.remove(), 300); }, 4000);
+    async function handleFileSelect(event) {
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
+
+      const compressStatus = document.getElementById('compressStatus');
+      compressStatus.classList.remove('hidden');
+
+      for (let i = 0; i < files.length; i++) {
+        if (selectedImages.length >= 50) {
+          alert("已達上限 50 張照片！");
+          break;
+        }
+        compressStatus.innerHTML = `<i class="fa-solid fa-arrows-rotate fa-spin mr-0.5"></i> 正在壓縮處理 (${i+1}/${files.length})...`;
+        const b64 = await compressSingleFile(files[i]);
+        selectedImages.push(b64);
+      }
+
+      compressStatus.classList.add('hidden');
+      renderPhotoGrid();
+      event.target.value = "";
+    }
+
+    function renderPhotoGrid() {
+      const grid = document.getElementById('photoGrid');
+      const countLabel = document.getElementById('photoCountLabel');
+      countLabel.textContent = `已選 ${selectedImages.length} / 50 張`;
+
+      if (selectedImages.length === 0) {
+        grid.innerHTML = '<div id="emptyPhotoNotice" class="col-span-4 text-center text-slate-500 text-[11px] py-3">尚未選擇照片，可拍照或由相簿批次選取</div>';
+        return;
+      }
+
+      grid.innerHTML = "";
+      selectedImages.forEach((imgSrc, idx) => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = "relative aspect-square rounded-lg overflow-hidden border border-slate-600 group bg-slate-800";
+        itemDiv.innerHTML = `
+          <img src="${imgSrc}" class="w-full h-full object-cover">
+          <button type="button" onclick="removeImage(${idx})" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-600/90 text-white text-[10px] flex items-center justify-center shadow-md active:scale-90 transition">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        `;
+        grid.appendChild(itemDiv);
+      });
+    }
+
+    function removeImage(index) {
+      selectedImages.splice(index, 1);
+      renderPhotoGrid();
+    }
+
+    function resetToUninspected() {
+      if (!activeItem) return;
+      const title = getItemTitle(activeItem);
+      if (!confirm(`⚠️ 確定要將【${title}】回復為「未巡檢」狀態嗎？`)) {
+        return;
+      }
+
+      const payload = {
+        sheetName: document.getElementById('sheetSelect').value,
+        rowIndex: activeItem.rowIndex || activeItem.id,
+        action: "reset"
+      };
+
+      activeItem["巡檢狀態"] = "未巡檢";
+      activeItem["巡檢人員"] = "";
+      activeItem["巡檢/調查日期"] = "";
+      applyFilters();
+
+      fetch(GAS_ENDPOINT_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(res => {
+        closeInspectModal();
+        alert(`🔄【${title}】已回復為未巡檢狀態！`);
+        loadDataFromGAS();
+      })
+      .catch(err => {
+        closeInspectModal();
+        alert("已更新本地畫面 (雲端連線逾時)");
+      });
+    }
+
+    // ==========================================
+    // 多照片分批上傳核心邏輯 (支援多達 50 張)
+    // ==========================================
+    async function submitInspectionRecord() {
+      if (!activeItem) return;
+      
+      const saveBtn = document.getElementById('saveBtn');
+      const progressBox = document.getElementById('uploadProgressBox');
+      const progressText = document.getElementById('uploadProgressText');
+      const progressPercent = document.getElementById('uploadProgressPercent');
+      const progressBar = document.getElementById('uploadProgressBar');
+
+      setButtonsDisabled(true);
+      progressBox.classList.remove('hidden');
+
+      const inspector = document.getElementById('inspectorInput').value.trim() || currentInspector || "未具名";
+      const newStatus = document.getElementById('inspectStatus').value;
+      const notes = document.getElementById('inspectNotes').value;
+      const sheetName = document.getElementById('sheetSelect').value;
+      const title = getItemTitle(activeItem);
+      const town = activeItem["鄉鎮市"] || activeItem["鄉鎮市區"] || "其他鄉鎮";
+      const totalPhotos = selectedImages.length;
+
+      // 步驟 1: 更新試算表紀錄與取得專屬階層資料夾
+      progressText.textContent = "正在建立專屬資料夾與更新試算表...";
+      progressPercent.textContent = totalPhotos > 0 ? "5%" : "80%";
+      progressBar.style.width = totalPhotos > 0 ? "5%" : "80%";
+
+      try {
+        const initRes = await fetch(GAS_ENDPOINT_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            sheetName: sheetName,
+            id: activeItem["熄菸桶編號"] || activeItem.id,
+            rowIndex: activeItem.rowIndex || activeItem.id,
+            status: newStatus,
+            inspector: inspector,
+            township: town,
+            location: title,
+            notes: notes,
+            hasPhotos: totalPhotos > 0
+          })
+        }).then(r => r.json());
+
+        if (initRes.status !== "success") {
+          throw new Error(initRes.message || "更新失敗");
         }
 
-        const mask = {
-            name: (s) => {
-                if(!s) return '***';
-                if(s.length === 2) return s[0] + '*';
-                return s[0] + '*'.repeat(s.length-2) + s[s.length-1];
-            },
-            id: (s) => {
-                if(!s) return '***';
-                return s.substring(0,3) + '****' + s.substring(s.length-2);
-            },
-            phone: (s) => {
-                if(!s) return '無資料';
-                const clean = s.toString().replace(/\D/g, '');
-                if(clean.length >= 10) {
-                    return clean.substring(0,4) + '***' + clean.substring(clean.length-3);
-                }
-                return clean.substring(0,2) + '***' + clean.substring(clean.length-2);
-            },
-            email: (s) => {
-                if(!s) return '***';
-                const parts = s.split('@');
-                if (parts.length < 2) return '***';
-                return parts[0][0] + '***@' + parts[1];
-            }
-        };
+        // 步驟 2: 分段批次上傳 50 張照片 (每批 4 張)
+        if (totalPhotos > 0 && initRes.targetFolderId) {
+          const batchSize = 4;
+          const totalBatches = Math.ceil(totalPhotos / batchSize);
 
-        // ---------- 核心 App 狀態 ----------
-        let app = {
-            participants: [],
-            prizes: [],
-            winners: [],
-            gasUrl: localStorage.getItem('aurora_v2_gas') || '',
-            drawing: false,
-            grandDrawing: false,
-            timer: null,
-            prize: null,
-            rawMin: 1,
-            rawMax: 1,
-            activeFields: { name: true, phone: false, idNum: false, invoice: false, email: false },
-            activeColumnCount: 1,
-            isGrandDrawMode: false,
-            stream: null,
-            mediaRecorder: null,
-            recordedChunks: [],
-            currentWinnersTemp: null
-        };
+          for (let b = 0; b < totalBatches; b++) {
+            const start = b * batchSize;
+            const end = Math.min(start + batchSize, totalPhotos);
+            const chunk = selectedImages.slice(start, end);
 
-        let autoScrollTimer = null;
-        let stageScrollTimer = null;
-        let isRecording = false;
-        let recordingStopCallback = null;
+            const currentUploaded = start + chunk.length;
+            const pct = Math.round((currentUploaded / totalPhotos) * 90) + 5;
 
-        window.onload = () => {
-            lucide.createIcons();
-            document.getElementById('gas-url').value = app.gasUrl;
-            
-            document.getElementById('cross-exclude-check').checked = localStorage.getItem('cfg_cross_exclude') !== 'false';
-            document.getElementById('fast-mode-check').checked = localStorage.getItem('cfg_fast_mode') === 'true';
-            document.getElementById('sound-check').checked = localStorage.getItem('cfg_sound') !== 'false';
-            document.getElementById('serial-number-check').checked = localStorage.getItem('cfg_serial') !== 'false';
-            document.getElementById('option-b-check').checked = localStorage.getItem('cfg_option_b') !== 'false';
-            document.getElementById('raw-weight-check').checked = localStorage.getItem('cfg_raw_weight') === 'true';
-            document.getElementById('power-weight-check').checked = localStorage.getItem('cfg_power_weight') === 'true';
+            progressText.textContent = `正在上傳照片 (${currentUploaded}/${totalPhotos} 張)...`;
+            progressPercent.textContent = `${pct}%`;
+            progressBar.style.width = `${pct}%`;
 
-            const savedTheme = localStorage.getItem('aurora_v2_theme');
-            if (savedTheme) {
-                document.getElementById('raffle-theme-input').value = savedTheme;
-            } else {
-                document.getElementById('raffle-theme-input').value = "綠點行動派 綠色場域推廣活動"; 
-            }
-
-            initFileDragAndDrop();
-            toggleSingleDrawMode();
-
-            const savedParticipants = localStorage.getItem('aurora_v2_participants');
-            if (savedParticipants) {
-                try {
-                    app.participants = JSON.parse(savedParticipants);
-                    app.participants.forEach(p => {
-                        if (isNaN(p.weight) || p.weight === undefined) p.weight = 0;
-                    });
-                    document.getElementById('p-count').innerText = `${app.participants.length} 筆`;
-                    updateActiveFields();
-                    findRawBounds();
-                    renderPreviewList();
-                } catch(e) {
-                    console.error('名單快取讀取異常:', e);
-                }
-            }
-
-            const savedPrizes = localStorage.getItem('aurora_v2_prizes');
-            if (savedPrizes) {
-                try {
-                    app.prizes = JSON.parse(savedPrizes);
-                    app.prizes.forEach(p => { if (p.useWeightedDraw === undefined) p.useWeightedDraw = true; });
-                    updatePrizeUI();
-                    renderSidebarPrizeList();
-                } catch(e) {}
-            }
-
-            const savedWinners = localStorage.getItem('aurora_v2_winners');
-            if (savedWinners) {
-                try {
-                    app.winners = JSON.parse(savedWinners);
-                    renderWinners();
-                    alignDrawnCounts();
-                } catch(e) {}
-            }
-
-            if (app.gasUrl) {
-                syncGas(true);
-            } else {
-                updateStatus(false, "未設定網址");
-                logDiagnostic("⚠ 系統設定尚未填寫 Google Apps Script 網址，已進入純離線模式。", true);
-            }
-
-            window.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.shiftKey && e.key === 'Enter') {
-                    e.preventDefault();
-                    if (document.getElementById('single-draw-toggle').checked && !app.drawing && !app.grandDrawing) {
-                        toggleDraw();
-                    }
-                }
-            });
-        };
-
-        function updateActiveFields() {
-            app.activeFields = {
-                name: true,
-                phone: app.participants.some(p => p.phone && p.phone.toString().trim() !== ""),
-                idNum: app.participants.some(p => p.idNum && p.idNum.toString().trim() !== ""),
-                invoice: app.participants.some(p => p.invoice && p.invoice.toString().trim() !== ""),
-                email: app.participants.some(p => p.email && p.email.toString().trim() !== "")
-            };
-            app.activeColumnCount = Object.values(app.activeFields).filter(Boolean).length;
+            await fetch(GAS_ENDPOINT_URL, {
+              method: 'POST',
+              body: JSON.stringify({
+                action: "upload_photo_batch",
+                targetFolderId: initRes.targetFolderId,
+                location: title,
+                startIndex: start + 1,
+                images: chunk
+              })
+            }).then(r => r.json());
+          }
         }
 
-        function alignDrawnCounts() {
-            if (!app.prizes || app.prizes.length === 0) return;
-            app.prizes.forEach(p => p.drawnCount = 0);
-            app.winners.forEach(w => {
-                const targetPrize = app.prizes.find(p => p.name === w.prizeName || p.id == w.prizeId);
-                if (targetPrize) targetPrize.drawnCount += 1;
-            });
-            safeLocalStorageSet('aurora_v2_prizes', JSON.stringify(app.prizes));
-            updatePrizeUI();
-            renderSidebarPrizeList();
-        }
-
-        const originalToggleModal = function(id) {
-            document.getElementById(id).classList.toggle('hidden');
-        };
-        function toggleModal(id) {
-            originalToggleModal(id);
-            if (id === 'settings-modal' && !document.getElementById('settings-modal').classList.contains('hidden')) {
-                renderPrizeWeightSettings();
-            }
-        }
-
-        function toggleSingleDrawMode() {
-            const isChecked = document.getElementById('single-draw-toggle').checked;
-            const singleLabel = document.getElementById('single-draw-label');
-            const numLabel = document.getElementById('draw-num-label');
-            const numInput = document.getElementById('draw-num');
-            const drawBtn = document.getElementById('draw-btn');
-            if (isChecked) {
-                singleLabel.className = "text-xs font-black text-slate-900 uppercase tracking-wider whitespace-nowrap transition-colors cursor-pointer";
-                numLabel.className = "text-xs font-bold text-slate-600 whitespace-nowrap transition-colors";
-                numInput.disabled = false;
-                numInput.className = "w-12 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-800 font-bold focus:outline-none focus:border-brand-500 transition-all shadow-sm";
-                if (!app.drawing && !app.grandDrawing) {
-                    drawBtn.disabled = false;
-                    drawBtn.className = "w-full py-3.5 bg-gradient-to-r from-brand-600 to-brand-800 hover:from-brand-500 hover:to-brand-700 text-white font-black text-sm lg:text-base rounded-xl shadow-lg shadow-brand-900/15 transition-all flex items-center justify-center gap-2 group truncate";
-                }
-            } else {
-                singleLabel.className = "text-xs font-medium text-slate-400 uppercase tracking-wider whitespace-nowrap transition-colors cursor-pointer";
-                numLabel.className = "text-xs font-medium text-slate-400 whitespace-nowrap transition-colors";
-                numInput.disabled = true;
-                numInput.className = "w-12 bg-slate-100 border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-400 font-bold transition-all shadow-sm cursor-not-allowed";
-                if (!app.drawing && !app.grandDrawing) {
-                    drawBtn.disabled = true;
-                    drawBtn.className = "w-full py-3.5 bg-slate-100 border border-slate-200 text-slate-400 font-bold text-sm lg:text-base rounded-xl cursor-not-allowed flex items-center justify-center gap-2 truncate opacity-50";
-                }
-            }
-        }
-
-        function saveSettings() {
-            safeLocalStorageSet('cfg_cross_exclude', document.getElementById('cross-exclude-check').checked);
-            safeLocalStorageSet('cfg_fast_mode', document.getElementById('fast-mode-check').checked);
-            safeLocalStorageSet('cfg_sound', document.getElementById('sound-check').checked);
-            safeLocalStorageSet('cfg_serial', document.getElementById('serial-number-check').checked);
-            safeLocalStorageSet('cfg_option_b', document.getElementById('option-b-check').checked);
-            safeLocalStorageSet('cfg_raw_weight', document.getElementById('raw-weight-check').checked);
-            safeLocalStorageSet('cfg_power_weight', document.getElementById('power-weight-check').checked);
-            
-            const urlInput = document.getElementById('gas-url').value.trim();
-            if(urlInput) {
-                app.gasUrl = urlInput;
-                safeLocalStorageSet('aurora_v2_gas', urlInput);
-                syncGas(false);
-            }
-            safeLocalStorageSet('aurora_v2_prizes', JSON.stringify(app.prizes));
-            toggleModal('settings-modal');
-            showToast('進階配置儲存成功！', 'success');
-        }
-
-        function updateThemeTitle() {
-            const val = document.getElementById('raffle-theme-input').value;
-            safeLocalStorageSet('aurora_v2_theme', val);
-        }
-
-        function switchDataTab(type) {
-            const pTab = document.getElementById('tab-content-participants');
-            const prTab = document.getElementById('tab-content-prizes');
-            const pBtn = document.getElementById('tab-btn-participants');
-            const prBtn = document.getElementById('tab-btn-prizes');
-            if (type === 'participants') {
-                pTab.classList.remove('hidden');
-                prTab.classList.add('hidden');
-                pBtn.className = "flex-1 py-2.5 text-xs font-black text-center border-b-2 border-brand-500 text-brand-600 transition-all";
-                prBtn.className = "flex-1 py-2.5 text-xs font-black text-center border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all";
-            } else {
-                pTab.classList.add('hidden');
-                prTab.classList.remove('hidden');
-                pBtn.className = "flex-1 py-2.5 text-xs font-black text-center border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all";
-                prBtn.className = "flex-1 py-2.5 text-xs font-black text-center border-b-2 border-brand-500 text-brand-600 transition-all";
-            }
-        }
-
-        function initFileDragAndDrop() {
-            const setupZone = (zoneId, inputId, type) => {
-                const zone = document.getElementById(zoneId);
-                const input = document.getElementById(inputId);
-                if (!zone || !input) return;
-                zone.addEventListener('click', () => input.click());
-                input.addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    handleFileSelect(file, type);
-                });
-                zone.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    zone.classList.add('border-brand-500', 'bg-brand-50/10');
-                });
-                zone.addEventListener('dragleave', () => {
-                    zone.classList.remove('border-brand-500', 'bg-brand-50/10');
-                });
-                zone.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    zone.classList.remove('border-brand-500', 'bg-brand-50/10');
-                    const file = e.dataTransfer.files[0];
-                    handleFileSelect(file, type);
-                });
-            };
-            setupZone('drop-zone-participants', 'file-input-participants', 'participants');
-            setupZone('drop-zone-prizes', 'file-input-prizes', 'prizes');
-        }
-
-        function handleFileSelect(file, type) {
-            if (!file) return;
-            const reader = new FileReader();
-            if (file.name.endsWith('.txt')) {
-                reader.onload = function(e) {
-                    const text = e.target.result;
-                    if (type === 'participants') {
-                        document.getElementById('manual-participants-text').value = text;
-                        importParticipantsManually();
-                    } else {
-                        document.getElementById('manual-prizes-text').value = text;
-                        importPrizesManually();
-                    }
-                };
-                reader.readAsText(file, 'UTF-8');
-            } else {
-                reader.onload = function(e) {
-                    try {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const firstSheetName = workbook.SheetNames[0];
-                        const worksheet = workbook.Sheets[firstSheetName];
-                        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                        const textLines = json.map(row => row.join('\t')).join('\n');
-                        if (type === 'participants') {
-                            document.getElementById('manual-participants-text').value = textLines;
-                            importParticipantsManually();
-                        } else {
-                            document.getElementById('manual-prizes-text').value = textLines;
-                            importPrizesManually();
-                        }
-                    } catch (err) {
-                        showToast('檔案格式讀取失敗，請確認是否為標準 Excel 檔案！', 'error');
-                    }
-                };
-                reader.readAsArrayBuffer(file);
-            }
-        }
-
-        function generateDefaultPrizes() {
-            const defaultText = `Apple AirPods Pro 3 ...... 1名
-HERAN無線手持吸塵器 ...... 2名
-Panasonic 12吋立扇 ...... 2名
-Shine Trip 坦途露營車 ...... 3名
-COTD保溫杯 ...... 5名
-A Plastic Project環保吸吸管 ...... 5名
-環保綠點30,000點 ...... 5名`;
-            document.getElementById('manual-prizes-text').value = defaultText;
-            importPrizesManually();
-            showToast('已成功產生預設獎項！', 'success');
-        }
-
-        function getPrizeFontSizeClass(name) {
-            if (name.length > 22) return 'text-[9.5px]';
-            if (name.length > 15) return 'text-[10.5px]';
-            return 'text-xs';
-        }
-
-        function renderSidebarPrizeList() {
-            const container = document.getElementById('sidebar-prize-list');
-            if(!container) return;
-            if(!app.prizes || app.prizes.length === 0) {
-                container.innerHTML = `<div class="text-slate-400 text-center py-6 italic text-[11px]">暫無獎項設定</div>`;
-                return;
-            }
-            container.innerHTML = app.prizes.map(p => {
-                const remaining = p.count - p.drawnCount;
-                const isDrawnOut = remaining <= 0;
-                const isActive = app.prize && app.prize.id === p.id;
-                const activeClass = isActive ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-sm' : 'bg-slate-50/50 border-slate-100 hover:border-slate-200 text-slate-700';
-                const opacityClass = isDrawnOut ? 'opacity-40 line-through' : '';
-                const statusBadge = isDrawnOut 
-                    ? `<span class="bg-slate-200 text-slate-500 text-[9px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap">已抽完</span>`
-                    : `<span class="bg-amber-100 text-amber-800 text-[9px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap">${p.count}名 / 剩 ${remaining}</span>`;
-                return `
-                    <div onclick="selectPrizeById('${p.id}')" class="p-1.5 px-2 border rounded-xl flex items-center justify-between cursor-pointer transition-all ${activeClass} ${opacityClass} mb-1 text-xs">
-                        <span class="truncate flex-1 font-bold min-w-0 ${getPrizeFontSizeClass(p.name)} whitespace-nowrap overflow-hidden text-ellipsis" title="${p.name}">
-                            ${p.name}
-                        </span>
-                        <div class="ml-2 flex-shrink-0">
-                            ${statusBadge}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function selectPrizeById(id) {
-            document.getElementById('prize-sel').value = id;
-            syncUI();
-            renderSidebarPrizeList();
-        }
-
-        function importParticipantsManually() {
-            const rawText = document.getElementById('manual-participants-text').value.trim();
-            if(!rawText) { showToast('請輸入名冊數據！', 'error'); return; }
-            const lines = rawText.split('\n');
-            const parsed = [];
-            lines.forEach((line, idx) => {
-                const cleanLine = line.trim();
-                if(!cleanLine) return;
-                let parts = cleanLine.split('\t');
-                if (parts.length === 1) parts = cleanLine.split(/[ ,，]+/);
-                parts = parts.map(p => p.trim()).filter(Boolean);
-                if (parts.length > 0) {
-                    let weightVal = 0;
-                    const possibleWeight = parts[4];
-                    if (possibleWeight && !isNaN(possibleWeight)) {
-                        weightVal = Number(possibleWeight);
-                    }
-                    parsed.push({
-                        name: parts[0] || `手動參賽者_${idx + 1}`,
-                        idNum: parts[1] || "",
-                        phone: parts[2] || "",
-                        invoice: parts[3] || "",
-                        weight: weightVal,
-                        email: parts[5] || "",
-                        note: parts[6] || ""
-                    });
-                }
-            });
-            if (parsed.length > 0) {
-                app.participants = parsed;
-                updateActiveFields();
-                findRawBounds();
-                document.getElementById('p-count').innerText = `${app.participants.length} 筆`;
-                renderPreviewList();
-                showToast(`已成功手動匯入 ${parsed.length} 筆名單！`, 'success');
-                safeLocalStorageSet('aurora_v2_participants', JSON.stringify(app.participants));
-                if (!document.getElementById('data-management-modal').classList.contains('hidden')) {
-                    toggleModal('data-management-modal');
-                }
-            } else {
-                showToast('無法解析有效名冊，請確認格式！', 'error');
-            }
-        }
-
-        function importPrizesManually() {
-            const rawText = document.getElementById('manual-prizes-text').value.trim();
-            if(!rawText) { showToast('請輸入獎項設定！', 'error'); return; }
-            const lines = rawText.split('\n');
-            const parsed = [];
-            lines.forEach((line, idx) => {
-                const cleanLine = line.trim();
-                if(!cleanLine) return;
-                let prizeName = "";
-                let count = 1;
-                if (cleanLine.includes('......')) {
-                    const parts = cleanLine.split('......');
-                    prizeName = parts[0].trim();
-                    const numMatch = parts[1].match(/\d+/);
-                    count = numMatch ? parseInt(numMatch[0], 10) : 1;
-                } else {
-                    const lastSpaceIndex = cleanLine.lastIndexOf(' ');
-                    const lastCommaIndex = cleanLine.lastIndexOf(',');
-                    const lastIndex = Math.max(lastSpaceIndex, lastCommaIndex);
-                    if (lastIndex !== -1) {
-                        prizeName = cleanLine.substring(0, lastIndex).trim();
-                        const rightPart = cleanLine.substring(lastIndex + 1).trim();
-                        const numMatch = rightPart.match(/\d+/);
-                        count = numMatch ? parseInt(numMatch[0], 10) : 1;
-                        if (!prizeName) { prizeName = cleanLine; count = 1; }
-                    } else {
-                        prizeName = cleanLine;
-                        count = 1;
-                    }
-                }
-                if (prizeName) {
-                    parsed.push({
-                        id: (idx + 1).toString(),
-                        name: prizeName,
-                        count: count,
-                        drawnCount: 0,
-                        useWeightedDraw: true
-                    });
-                }
-            });
-            if (parsed.length > 0) {
-                app.prizes = parsed;
-                updatePrizeUI();
-                renderSidebarPrizeList();
-                showToast('已成功手動配置獎項清單！', 'success');
-                safeLocalStorageSet('aurora_v2_prizes', JSON.stringify(app.prizes));
-                if (!document.getElementById('data-management-modal').classList.contains('hidden')) {
-                    toggleModal('data-management-modal');
-                }
-            } else {
-                showToast('無法解析有效獎項設定！', 'error');
-            }
-        }
-
-        function findRawBounds() {
-            if (!app.participants.length) return;
-            const weights = app.participants.map(p => Number(p.weight) || 0);
-            app.rawMin = Math.min(...weights);
-            app.rawMax = Math.max(...weights);
-            if (app.rawMax === app.rawMin) app.rawMax += 0.001; 
-        }
-
-        function getRescaledWeight(participant, prizeMin, prizeMax) {
-            const rawVal = Number(participant.weight) || 0;
-            const useRaw = document.getElementById('raw-weight-check').checked;
-            let weight = rawVal;
-            if (!useRaw) {
-                weight = prizeMin + ((rawVal - app.rawMin) / (app.rawMax - app.rawMin)) * (prizeMax - prizeMin);
-            }
-            const usePower = document.getElementById('power-weight-check').checked;
-            if (usePower) weight = Math.pow(weight, 2);
-            return Number(weight.toFixed(4));
-        }
-
-        // ---------- 全域即時檢索與高效渲染防護 (公部門公信模式) ----------
-        function renderPreviewList() {
-            const list = document.getElementById('preview-list');
-            const header = document.getElementById('preview-header-row');
-            const hintEl = document.getElementById('render-limit-hint');
-            const search = document.getElementById('preview-search').value.toLowerCase().trim();
-            
-            // 全域母體搜尋
-            const filtered = app.participants.filter(p => 
-                p.name.toLowerCase().includes(search) || 
-                (p.phone && p.phone.toLowerCase().includes(search)) ||
-                (p.idNum && p.idNum.toLowerCase().includes(search)) || 
-                (p.invoice && p.invoice.toLowerCase().includes(search)) ||
-                (p.email && p.email.toLowerCase().includes(search))
-            );
-
-            // 更新母體與過濾提示
-            const totalCount = app.participants.length;
-            const matchCount = filtered.length;
-            if (search) {
-                hintEl.innerText = matchCount > 100 ? `顯示前 100 筆 / 共 ${matchCount} 筆符合` : `共 ${matchCount} 筆符合`;
-            } else {
-                hintEl.innerText = totalCount > 100 ? `即時預覽前 100 筆` : `完整顯示`;
-            }
-
-            let previewActiveFields = { name: app.activeFields.name, phone: app.activeFields.phone };
-            let colsCount = Object.values(previewActiveFields).filter(Boolean).length;
-            header.className = `grid grid-cols-${colsCount} gap-2 px-3 py-2 bg-slate-100 rounded-xl text-[10px] font-black uppercase text-slate-500 tracking-wider border border-slate-200`;
-            let headerHtml = '';
-            if (app.activeFields.name) headerHtml += `<span class="whitespace-nowrap">姓名</span>`;
-            if (app.activeFields.phone) headerHtml += `<span class="text-center whitespace-nowrap">聯絡資訊</span>`;
-            header.innerHTML = headerHtml;
-            
-            if (matchCount === 0) {
-                list.innerHTML = `<div class="text-slate-400 text-center py-4 italic text-[11px]">無匹配名單</div>`;
-                return;
-            }
-
-            // 限制前 100 筆渲染，保障 DOM 順暢度
-            const renderSlice = filtered.slice(0, 100);
-            list.innerHTML = renderSlice.map(p => {
-                let itemHtml = `<div class="grid grid-cols-${colsCount} gap-2 items-center px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl hover:border-brand-500/30 transition-all text-xs">`;
-                if (app.activeFields.name) itemHtml += `<span class="font-bold text-slate-800 truncate">${mask.name(p.name)}</span>`;
-                if (app.activeFields.phone) itemHtml += `<span class="text-center font-mono text-slate-500 truncate">${mask.phone(p.phone)}</span>`;
-                itemHtml += `</div>`;
-                return itemHtml;
-            }).join('');
-        }
-
-        // ---------- 雲端同步 ----------
-        async function syncGas(silent = false) {
-            const url = document.getElementById('gas-url').value.trim();
-            if(!url) {
-                updateStatus(false, "未設定網址");
-                logDiagnostic("⚠ 系統設定尚未填寫 Google Apps Script 網址，已進入純離線模式。", true);
-                return;
-            }
-            app.gasUrl = url;
-            safeLocalStorageSet('aurora_v2_gas', url);
-            if (!silent) showToast('正在與 Google 雲端進行實時連鎖同步...', 'info');
-            logDiagnostic("📡 正在發起 API 連線檢查 (JSONP 安全跨域模式)...");
-            const callbackName = 'gasCallback_' + Math.round(Math.random() * 1000000);
-            window[callbackName] = function(d) {
-                try {
-                    const script = document.getElementById(callbackName);
-                    if (script) script.remove();
-                    delete window[callbackName];
-                    if(d.status === 'success') {
-                        app.participants = d.participants.map(p => ({
-                            ...p,
-                            weight: (p.weight !== undefined && !isNaN(p.weight)) ? Number(p.weight) : 0
-                        }));
-                        const cloudPrizes = d.prizes;
-                        cloudPrizes.forEach(cp => {
-                            if (cp.useWeightedDraw === undefined) cp.useWeightedDraw = true;
-                        });
-                        const mergedPrizes = cloudPrizes.map(cp => {
-                            const localPrize = app.prizes.find(lp => lp.id == cp.id);
-                            if (localPrize && localPrize.useWeightedDraw !== undefined) {
-                                return { ...cp, useWeightedDraw: localPrize.useWeightedDraw };
-                            }
-                            return cp;
-                        });
-                        const cloudIds = new Set(cloudPrizes.map(cp => cp.id));
-                        const localOnly = app.prizes.filter(lp => !cloudIds.has(lp.id));
-                        app.prizes = [...mergedPrizes, ...localOnly];
-                        updateActiveFields();
-                        findRawBounds();
-                        updatePrizeUI();
-                        renderSidebarPrizeList();
-                        updateStatus(true);
-                        document.getElementById('p-count').innerText = `${app.participants.length} 筆`;
-                        renderPreviewList();
-                        safeLocalStorageSet('aurora_v2_participants', JSON.stringify(app.participants));
-                        safeLocalStorageSet('aurora_v2_prizes', JSON.stringify(app.prizes));
-                        logDiagnostic("✅ 雲端連線成功！已取得 " + app.participants.length + " 筆名單，" + app.prizes.length + " 筆獎項配置。");
-                        if(!silent) showToast('雲端數據同步連線成功！', 'success');
-                    } else {
-                        updateStatus(false, "同步被拒");
-                        logDiagnostic("❌ 雲端返回錯誤：" + d.message, true);
-                        if(!silent) showToast('同步失敗: ' + (d.message || '未知錯誤'), 'error');
-                    }
-                } catch(err) {
-                    console.error('JSONP 解析錯誤:', err);
-                    updateStatus(false, "解析失敗");
-                    logDiagnostic("❌ 雲端回傳資料解析失敗。", true);
-                }
-            };
-            const scriptUrl = `${url}?action=getData&callback=${callbackName}&_t=${new Date().getTime()}`;
-            const script = document.createElement('script');
-            script.id = callbackName;
-            script.src = scriptUrl;
-            script.onerror = function() {
-                updateStatus(false, "連線中斷");
-                logDiagnostic("❌ 雲端連線失敗！", true);
-                delete window[callbackName];
-                script.remove();
-            };
-            document.body.appendChild(script);
-        }
-
-        function updateStatus(ok, customMessage = "") {
-            const el = document.getElementById('conn-status');
-            if (!el) return;
-            if (ok) {
-                el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> 已連線至雲端`;
-                el.className = "px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center gap-1.5 text-xs font-bold text-emerald-600 shadow-sm";
-            } else {
-                const msg = customMessage || "連線中斷";
-                el.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> ${msg}`;
-                el.className = "px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 flex items-center gap-1.5 text-xs font-bold text-rose-600 shadow-sm";
-            }
-        }
-
-        function updatePrizeUI() {
-            const s = document.getElementById('prize-sel');
-            s.innerHTML = app.prizes.map(p => `<option value="${p.id}">${p.name} (剩餘 ${p.count - p.drawnCount})</option>`).join('');
-            syncUI();
-        }
-
-        function syncUI() {
-            const id = document.getElementById('prize-sel').value;
-            app.prize = app.prizes.find(p => p.id == id);
-        }
-
-        function renderPrizeWeightSettings() {
-            const container = document.getElementById('prize-weight-settings-container');
-            if (!container || !app.prizes.length) {
-                container.innerHTML = '<p class="text-[10px] text-slate-400">尚無獎項資料</p>';
-                return;
-            }
-            container.innerHTML = app.prizes.map(p => {
-                const remaining = p.count - p.drawnCount;
-                return `
-                <label class="flex items-center gap-3 p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 transition-all select-none">
-                    <input type="checkbox" class="prize-weight-checkbox w-4 h-4 rounded border-slate-300 bg-white text-brand-500 focus:ring-brand-500" data-prize-id="${p.id}" ${p.useWeightedDraw ? 'checked' : ''}>
-                    <span class="text-xs font-bold text-slate-700 flex-1">${p.name}</span>
-                    <span class="text-[10px] text-slate-400">剩餘 ${remaining} 名</span>
-                </label>
-                `;
-            }).join('');
-
-            document.querySelectorAll('.prize-weight-checkbox').forEach(cb => {
-                cb.addEventListener('change', function() {
-                    const prizeId = this.getAttribute('data-prize-id');
-                    const prize = app.prizes.find(p => p.id == prizeId);
-                    if (prize) {
-                        prize.useWeightedDraw = this.checked;
-                    }
-                });
-            });
-        }
-
-        // ---------- 錄影與本地自動下載 ----------
-        function startRecordingStream() {
-            if (app.stream) {
-                app.recordedChunks = [];
-                try {
-                    app.mediaRecorder = new MediaRecorder(app.stream, { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 8000000 });
-                } catch(e) {
-                    try {
-                        app.mediaRecorder = new MediaRecorder(app.stream, { mimeType: 'video/webm', videoBitsPerSecond: 8000000 });
-                    } catch(err) {
-                        app.mediaRecorder = new MediaRecorder(app.stream);
-                    }
-                }
-                app.mediaRecorder.ondataavailable = (e) => {
-                    if (e.data.size > 0) app.recordedChunks.push(e.data);
-                };
-                app.mediaRecorder.start();
-                isRecording = true;
-            } else {
-                showToast('未開啟螢幕授權錄影，將不進行錄影備份。', 'info');
-                isRecording = false;
-            }
-        }
-
-        function stopRecordingAndCleanup(onComplete) {
-            if (app.mediaRecorder && app.mediaRecorder.state !== 'inactive') {
-                app.mediaRecorder.onstop = () => {
-                    isRecording = false;
-                    if (onComplete) onComplete();
-                };
-                app.mediaRecorder.stop();
-            } else {
-                isRecording = false;
-                if (onComplete) onComplete();
-            }
-        }
-
-        async function authorizeRecording() {
-            try {
-                app.stream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { frameRate: 30, width: 1920, height: 1080 }
-                });
-                const dot = document.getElementById('record-dot');
-                const txt = document.getElementById('record-text');
-                const btn = document.getElementById('record-auth-btn');
-                dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping";
-                txt.innerText = "已授權錄影錄製中";
-                btn.className = "px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center gap-1.5 text-xs font-bold text-emerald-600 shadow-sm";
-                showToast('錄影畫面授權成功，現在開抽時將自動錄影備份歸檔！', 'success');
-            } catch(e) {
-                showToast('授權失敗，部分功能可能受限。', 'error');
-            }
-        }
-
-        function downloadLastVideo() {
-            if (!app.recordedChunks || app.recordedChunks.length === 0) return;
-            const blob = new Blob(app.recordedChunks, { type: 'video/webm' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            const theme = document.getElementById('raffle-theme-input').value.trim() || '抽獎活動';
-            const safeTheme = theme.replace(/[\/\\:*?"<>|]/g, '_');
-            a.download = `${safeTheme}_抽獎錄影存證_${new Date().getTime()}.webm`;
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-            }, 100);
-            showToast('已自動儲存本次抽獎錄影檔至電腦！', 'success');
-        }
-
-        function exportWinnersToExcel() {
-            if (!app.winners || app.winners.length === 0) {
-                showToast('目前尚無中獎紀錄可匯出！', 'error');
-                return;
-            }
-            const data = app.winners.map((w, idx) => ({
-                '中獎序號': idx + 1,
-                '中獎獎項': w.prizeName || '未指定',
-                '得獎者姓名': w.name || '',
-                '身分證字號': w.idNum || '',
-                '聯絡電話': w.phone || '',
-                '發票號碼': w.invoice || '',
-                '電子信箱': w.email || '',
-                '抽籤時間': w.time || ''
-            }));
-            const ws = XLSX.utils.json_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "中獎清單");
-            const theme = document.getElementById('raffle-theme-input').value.trim() || '抽獎活動';
-            const safeTheme = theme.replace(/[\/\\:*?"<>|]/g, '_');
-            const fileName = `${safeTheme}_中獎名冊_${new Date().toISOString().slice(0,10)}.xlsx`;
-            XLSX.writeFile(wb, fileName);
-            showToast('已成功匯出中獎名單 Excel！', 'success');
-        }
-
-        function startAutoScroll() {
-            stopAutoScroll();
-            const el = document.getElementById('win-log');
-            if (!el || el.scrollHeight <= el.clientHeight) return;
-            const step = 3;
-            autoScrollTimer = setInterval(() => {
-                if (el.scrollTop >= el.scrollHeight - el.clientHeight) {
-                    clearInterval(autoScrollTimer);
-                    autoScrollTimer = null;
-                    return;
-                }
-                el.scrollTop += step;
-            }, 10);
-            el.addEventListener('mouseenter', () => {
-                if (!isRecording && autoScrollTimer) {
-                    clearInterval(autoScrollTimer);
-                    autoScrollTimer = null;
-                }
-            });
-            el.addEventListener('mouseleave', () => {
-                if (!isRecording && !autoScrollTimer && el.scrollTop < el.scrollHeight - el.clientHeight) {
-                    autoScrollTimer = setInterval(() => {
-                        if (el.scrollTop >= el.scrollHeight - el.clientHeight) {
-                            clearInterval(autoScrollTimer);
-                            autoScrollTimer = null;
-                            return;
-                        }
-                        el.scrollTop += step;
-                    }, 10);
-                }
-            });
-        }
-
-        function stopAutoScroll() {
-            if (autoScrollTimer) { clearInterval(autoScrollTimer); autoScrollTimer = null; }
-            const el = document.getElementById('win-log');
-            if (el) { el.onmouseenter = null; el.onmouseleave = null; }
-        }
-
-        function renderAllWinners(winners, isGrandDraw) {
-            const box = document.getElementById('marquee-box');
-            const showInvoice = app.activeFields.invoice;
-            const colWidthsClass = showInvoice 
-                ? "grid-cols-[36fr_18fr_21fr_25fr]" 
-                : "grid-cols-[45fr_25fr_30fr]";
-            const gridClass = `grid ${colWidthsClass} gap-2`;
-
-            const isSerialNumEnabled = document.getElementById('serial-number-check').checked;
-            const cardsHtml = winners.map((w, idx) => {
-                const cardPadding = "py-2.5 px-4 rounded-xl";
-                let cardRows = `<div class="winner-card ${gridClass} items-center ${cardPadding} shadow-sm flex-shrink-0 transition-all">`;
-                cardRows += `<div class="text-left truncate flex items-center gap-1.5 min-w-0">
-                    ${isSerialNumEnabled ? `<span class="inline-flex items-center justify-center bg-amber-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm select-none">No.${idx + 1}</span>` : ''}
-                    <span class="text-xs lg:text-sm font-black text-amber-950 truncate whitespace-nowrap" title="${w.prizeName || ''}">${w.prizeName || ''}</span>
-                </div>`;
-                cardRows += `<div class="text-center truncate min-w-0">
-                    <span class="text-sm lg:text-base font-black bg-gradient-to-r from-amber-800 to-yellow-600 bg-clip-text text-transparent whitespace-nowrap">${mask.name(w.name)}</span>
-                </div>`;
-                cardRows += `<div class="text-center truncate min-w-0">
-                    <span class="text-xs font-mono font-bold text-slate-700 whitespace-nowrap">${mask.phone(w.phone)}</span>
-                </div>`;
-                if (showInvoice) {
-                    cardRows += `<div class="text-right truncate min-w-0">
-                        <span class="bg-amber-600 text-white px-2 py-0.5 rounded-lg text-xs font-black font-mono inline-block shadow-sm whitespace-nowrap">${w.invoice || '無'}</span>
-                    </div>`;
-                }
-                cardRows += `</div>`;
-                return cardRows;
-            }).join('');
-
-            box.innerHTML = `
-                <div class="flex flex-col h-full min-h-0">
-                    <div class="flex justify-between items-center bg-amber-50 px-4 py-1.5 border border-amber-200/60 rounded-xl mb-2 shadow-sm select-none flex-shrink-0">
-                        <span class="text-xs font-black text-amber-800 uppercase tracking-widest">📋 抽籤存證畫面 - 共 ${winners.length} 筆得獎者</span>
-                        <div class="flex items-center gap-2">
-                            ${app.recordedChunks && app.recordedChunks.length > 0 ? `<button onclick="downloadLastVideo()" class="px-2 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black flex items-center gap-1 shadow-sm transition-all"><i data-lucide="download" class="w-3 h-3"></i> 💾 下載錄影備份</button>` : ''}
-                            <span class="text-[10px] font-mono font-black bg-amber-600 text-white px-2 py-0.5 rounded-full">自動輪播中</span>
-                        </div>
-                    </div>
-                    <div class="${gridClass} px-4 py-2 bg-amber-100/50 border border-amber-200 rounded-xl text-[10px] font-black uppercase text-amber-700 tracking-wider shadow-sm mb-2 flex-shrink-0">
-                        <span class="text-left whitespace-nowrap">👑 獲得獎項</span>
-                        <span class="text-center whitespace-nowrap">得獎者</span>
-                        <span class="text-center whitespace-nowrap">📱 手機號碼</span>
-                        ${showInvoice ? '<span class="text-right whitespace-nowrap">🎫 發票號碼</span>' : ''}
-                    </div>
-                    <div class="stage-scroll-container flex-1 overflow-y-auto space-y-1.5 pr-1 min-h-0">
-                        ${cardsHtml}
-                    </div>
-                </div>
-            `;
-            lucide.createIcons();
-
-            setTimeout(() => {
-                startStagePageScroll('.stage-scroll-container', () => {
-                    setTimeout(() => {
-                        if (recordingStopCallback) {
-                            recordingStopCallback();
-                            recordingStopCallback = null;
-                        }
-                    }, 4000);
-                });
-            }, 150);
-        }
-
-        function startStagePageScroll(containerSelector = '.stage-scroll-container', onScrollEnd = null) {
-            stopStagePageScroll();
-            const el = document.querySelector(containerSelector);
-            if (!el) return;
-            if (el.scrollHeight <= el.clientHeight) {
-                if (onScrollEnd) {
-                    setTimeout(onScrollEnd, 4000);
-                }
-                return;
-            }
-            const step = 3;
-            stageScrollTimer = setInterval(() => {
-                if (el.scrollTop >= el.scrollHeight - el.clientHeight) {
-                    clearInterval(stageScrollTimer);
-                    stageScrollTimer = null;
-                    if (onScrollEnd) onScrollEnd();
-                    return;
-                }
-                el.scrollTop += step;
-            }, 10);
-            el.addEventListener('mouseenter', () => {
-                if (!isRecording && stageScrollTimer) {
-                    clearInterval(stageScrollTimer);
-                    stageScrollTimer = null;
-                }
-            });
-            el.addEventListener('mouseleave', () => {
-                if (!isRecording && !stageScrollTimer && el.scrollTop < el.scrollHeight - el.clientHeight) {
-                    stageScrollTimer = setInterval(() => {
-                        if (el.scrollTop >= el.scrollHeight - el.clientHeight) {
-                            clearInterval(stageScrollTimer);
-                            stageScrollTimer = null;
-                            if (onScrollEnd) onScrollEnd();
-                            return;
-                        }
-                        el.scrollTop += step;
-                    }, 10);
-                }
-            });
-        }
-
-        function stopStagePageScroll() {
-            if (stageScrollTimer) { clearInterval(stageScrollTimer); stageScrollTimer = null; }
-            const el = document.querySelector('.stage-scroll-container');
-            if (el) { el.onmouseenter = null; el.onmouseleave = null; }
-        }
-
-        function playDeceleratingTicks(currentInterval, maxTime, elapsed) {
-            if (elapsed >= maxTime || !app.drawing) return;
-            audio.playTick();
-            let nextInterval = currentInterval * 1.13;
-            if (nextInterval > 400) nextInterval = 400;
-            setTimeout(() => {
-                playDeceleratingTicks(nextInterval, maxTime, elapsed + currentInterval);
-            }, currentInterval);
-        }
-
-        function toggleDraw() {
-            if (!document.getElementById('single-draw-toggle').checked) return;
-            if(app.drawing) {
-                stopDraw();
-            } else {
-                app.isGrandDrawMode = false;
-                startDraw();
-            }
-        }
-
-        async function startDraw() {
-            if(!app.participants.length || !app.prize) return showToast('請確認名單與獎項已載入。', 'error');
-            if (app.prize.count - app.prize.drawnCount <= 0) return showToast('此項獎項配額已抽完！', 'error');
-            app.drawing = true;
-            startRecordingStream();
-            const btn = document.getElementById('draw-btn');
-            const gBtn = document.getElementById('grand-draw-btn');
-            btn.disabled = true;
-            gBtn.disabled = true;
-            btn.className = "w-full py-3.5 bg-slate-200 text-slate-400 font-black text-base lg:text-lg rounded-2xl cursor-not-allowed flex items-center justify-center gap-2 transition-all border border-slate-300/60 truncate";
-            gBtn.className = "w-full py-3.5 bg-slate-100 text-slate-400 font-bold text-base lg:text-lg rounded-2xl border border-slate-200 cursor-not-allowed flex items-center justify-center gap-2 transition-all truncate";
-            document.getElementById('btn-text').innerText = "正在抽選...";
-            const num = parseInt(document.getElementById('draw-num').value, 10) || 1;
-            const box = document.getElementById('marquee-box');
-            box.innerHTML = '';
-            
-            const winners = pickWinners(num, app.prize);
-            
-            if (winners.length === 0) {
-                showToast('名單中沒有合規的人選！', 'error');
-                restoreButtons();
-                app.drawing = false;
-                return;
-            }
-            app.currentWinnersTemp = winners;
-            
-            const isFastMode = document.getElementById('fast-mode-check').checked;
-            const duration = isFastMode ? 200 : 3200;
-            const slotElements = [];
-            
-            for(let i=0; i<winners.length; i++) {
-                const targetWinner = winners[i];
-                if (!targetWinner) continue;
-                const totalItemsInSlot = isFastMode ? 2 : 28;
-                const slotItems = [];
-                for (let k = 0; k < totalItemsInSlot - 1; k++) {
-                    slotItems.push(app.participants[Math.floor(Math.random() * app.participants.length)]);
-                }
-                slotItems.push(targetWinner);
-                const slotWin = document.createElement('div');
-                slotWin.className = "slot-window mb-2.5 slot-perspective";
-                const slotContainer = document.createElement('div');
-                slotContainer.className = "slot-container";
-                slotContainer.style.transition = `transform ${duration}ms cubic-bezier(0.12, 0.88, 0.28, 1.025)`;
-                slotItems.forEach(item => {
-                    const itemEl = document.createElement('div');
-                    itemEl.className = "slot-item border-b border-slate-100 bg-white text-slate-800 text-sm";
-                    let inner = '';
-                    if (app.activeFields.name) inner += `<span class="font-black text-brand-600 truncate text-left">${mask.name(item.name)}</span>`;
-                    if (app.activeFields.idNum) inner += `<span class="text-xs text-slate-500 font-mono text-center truncate">${mask.id(item.idNum)}</span>`;
-                    if (app.activeFields.invoice) inner += `<span class="text-xs text-brand-600 font-mono font-bold text-right truncate">${item.invoice}</span>`;
-                    itemEl.innerHTML = inner;
-                    slotContainer.appendChild(itemEl);
-                });
-                slotWin.appendChild(slotContainer);
-                box.appendChild(slotWin);
-                slotElements.push({ container: slotContainer, total: totalItemsInSlot });
-            }
-            if (!isFastMode) playDeceleratingTicks(45, duration, 0);
-            setTimeout(() => {
-                slotElements.forEach(s => {
-                    const translateY = -((s.total - 1) * 76);
-                    s.container.style.transform = `translateY(${translateY}px)`;
-                });
-            }, 50);
-            setTimeout(() => {
-                if (app.drawing) stopDrawCore(winners);
-            }, duration + 100);
-        }
-
-        async function stopDrawCore(winners) {
-            app.drawing = false;
-            const time = new Date().toLocaleString();
-            winners.forEach(w => app.winners.unshift({ ...w, prizeName: app.prize.name, time }));
-            audio.playTada();
-            saveRecords();
-            renderWinners();
-            app.prize.drawnCount += winners.length;
-            syncUI();
-            renderSidebarPrizeList();
-
-            recordingStopCallback = () => {
-                stopRecordingAndCleanup(() => {
-                    if (app.recordedChunks && app.recordedChunks.length > 0) {
-                        downloadLastVideo();
-                    }
-                    uploadAndRecord(winners, time, false);
-                    restoreButtons();
-                });
-            };
-            renderAllWinners(winners, false);
-        }
-
-        function stopDraw() {
-            app.drawing = false;
-            restoreButtons();
-        }
-
-        function toggleGrandDraw() {
-            if (app.grandDrawing) return;
-            app.isGrandDrawMode = true;
-            startGrandDraw();
-        }
-
-        async function startGrandDraw() {
-            const totalRemainingPrizeM = app.prizes.reduce((sum, p) => sum + Math.max(0, p.count - p.drawnCount), 0);
-            if (totalRemainingPrizeM <= 0) return showToast('所有禮物品項的配額皆已抽完！', 'error');
-            if (!app.participants.length) return showToast('請載入名單！', 'error');
-            app.grandDrawing = true;
-            startRecordingStream();
-            const btn = document.getElementById('draw-btn');
-            const gBtn = document.getElementById('grand-draw-btn');
-            btn.disabled = true;
-            gBtn.disabled = true;
-            btn.className = "w-full py-3.5 bg-slate-100 text-slate-400 font-black text-base lg:text-lg rounded-2xl cursor-not-allowed flex items-center justify-center gap-2 transition-all truncate";
-            gBtn.className = "w-full py-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-500 font-bold text-base lg:text-lg rounded-2xl cursor-wait flex items-center justify-center gap-2 animate-pulse truncate";
-            document.getElementById('grand-btn-text').innerText = "⚡ 一次抽選全部獎項中...";
-            const box = document.getElementById('marquee-box');
-            box.innerHTML = '';
-            const isFastMode = document.getElementById('fast-mode-check').checked;
-            if (isFastMode) {
-                executeGrandDrawCore();
-            } else {
-                const previewCard = document.createElement('div');
-                previewCard.className = "marquee-card bg-slate-50 p-6 rounded-xl text-center border border-slate-200";
-                box.appendChild(previewCard);
-                let rollCount = 0;
-                const rollTimer = setInterval(() => {
-                    audio.playTick();
-                    const p = app.participants[Math.floor(Math.random() * app.participants.length)];
-                    previewCard.innerHTML = `<span class="font-black text-amber-600 text-sm md:text-base lg:text-lg tracking-wider">⚡ 正在一次抽選全部獎項中: ${mask.name(p.name)} ...</span>`;
-                    rollCount++;
-                    if (rollCount >= 35) {
-                        clearInterval(rollTimer);
-                        executeGrandDrawCore();
-                    }
-                }, 75);
-            }
-        }
-
-        // ---------- 高效 Set 雜湊抽選演算法 ----------
-        function drawRandomWithSet(pool, count, existingWinnerKeys) {
-            const shuffled = [...pool].sort(() => Math.random() - 0.5);
-            let selected = [];
-            for (let i = 0; i < shuffled.length; i++) {
-                if (selected.length >= count) break;
-                let candidate = shuffled[i];
-                let key = candidate.name + (candidate.phone || candidate.idNum || "");
-                if (!existingWinnerKeys.has(key)) {
-                    selected.push(candidate);
-                    existingWinnerKeys.add(key);
-                }
-            }
-            return selected;
-        }
-
-        function drawWeightedWithSet(pool, count, prize, existingWinnerKeys) {
-            let workingPool = pool.map(p => ({ ...p, rand: Math.random() }));
-            workingPool.sort((a, b) => {
-                const wA = Number(a.weight) || 0;
-                const wB = Number(b.weight) || 0;
-                if (wB !== wA) return wB - wA;
-                return b.rand - a.rand;
-            });
-            
-            let selected = [];
-            for (let i = 0; i < workingPool.length; i++) {
-                if (selected.length >= count) break;
-                let candidate = workingPool[i];
-                let key = candidate.name + (candidate.phone || candidate.idNum || "");
-                if (!existingWinnerKeys.has(key)) {
-                    selected.push(candidate);
-                    existingWinnerKeys.add(key);
-                }
-            }
-            return selected;
-        }
-
-        function executeGrandDrawCore() {
-            let pool = [...app.participants];
-            const activePrizes = [...app.prizes].filter(p => p.count - p.drawnCount > 0);
-            const isCrossExclude = document.getElementById('cross-exclude-check').checked;
-            
-            let currentGrandDrawWinnerKeys = new Set();
-
-            if (isCrossExclude && app.winners.length > 0) {
-                const wonIdNums = new Set(app.winners.map(w => w.idNum).filter(Boolean));
-                const wonNames = new Set(app.winners.map(w => w.name).filter(Boolean));
-                pool = pool.filter(p => !wonIdNums.has(p.idNum) && !wonNames.has(p.name));
-            }
-
-            let allWinners = [];
-            const time = new Date().toLocaleString();
-
-            activePrizes.forEach(prize => {
-                let rQuota = prize.count - prize.drawnCount;
-                if (pool.length === 0 || rQuota <= 0) return;
-
-                let prizeWinners;
-                if (prize.useWeightedDraw) {
-                    prizeWinners = drawWeightedWithSet(pool, rQuota, prize, currentGrandDrawWinnerKeys);
-                } else {
-                    prizeWinners = drawRandomWithSet(pool, rQuota, currentGrandDrawWinnerKeys);
-                }
-
-                prizeWinners.forEach(w => {
-                    allWinners.push({
-                        ...w,
-                        prizeId: prize.id,
-                        prizeName: prize.name,
-                        time: time
-                    });
-                });
-
-                if (isCrossExclude) {
-                    const winnerKeysThisPrize = new Set(prizeWinners.map(w => w.name + (w.phone || w.idNum || "")));
-                    pool = pool.filter(p => !winnerKeysThisPrize.has(p.name + (p.phone || p.idNum || "")));
-                }
-            });
-
-            allWinners.forEach(w => {
-                app.winners.unshift(w);
-                const originalPrize = app.prizes.find(p => p.id == w.prizeId);
-                if (originalPrize) originalPrize.drawnCount += 1;
-            });
-
-            audio.playTada();
-            saveRecords();
-            renderWinners();
-            syncUI();
-            renderSidebarPrizeList();
-
-            recordingStopCallback = () => {
-                stopRecordingAndCleanup(() => {
-                    if (app.recordedChunks && app.recordedChunks.length > 0) {
-                        downloadLastVideo();
-                    }
-                    uploadAndRecord(allWinners, time, true);
-                    restoreButtons();
-                    app.grandDrawing = false;
-                });
-            };
-            renderAllWinners(allWinners, true);
-        }
-
-        function pickWinners(count, prize) {
-            let pool = [...app.participants];
-            let thisDrawWinnerKeys = new Set();
-            
-            const isCrossExclude = document.getElementById('cross-exclude-check').checked;
-            if (isCrossExclude && app.winners.length > 0) {
-                const wonIdNums = new Set(app.winners.map(w => w.idNum).filter(Boolean));
-                const wonNames = new Set(app.winners.map(w => w.name).filter(Boolean));
-                pool = pool.filter(p => !wonIdNums.has(p.idNum) && !wonNames.has(p.name));
-            }
-            if(document.getElementById('dup-check').checked) {
-                const wonInvoices = new Set(app.winners.map(w => w.invoice).filter(Boolean));
-                const wonIdNums = new Set(app.winners.map(w => w.idNum).filter(Boolean));
-                const wonNames = new Set(app.winners.map(w => w.name).filter(Boolean));
-                
-                pool = pool.filter(p => {
-                    if (p.invoice && p.invoice.toString().trim() !== "") {
-                        return !wonInvoices.has(p.invoice);
-                    }
-                    return !( (p.idNum && wonIdNums.has(p.idNum)) || (p.name && wonNames.has(p.name)) );
-                });
-            }
-            if(pool.length === 0) return [];
-            
-            const useOptionB = document.getElementById('option-b-check').checked;
-            if (useOptionB) {
-                return drawWeightedWithSet(pool, count, prize, thisDrawWinnerKeys);
-            } else {
-                const currentM = app.prizes.reduce((sum, pr) => sum + Math.max(0, pr.count - pr.drawnCount), 0);
-                const prizeMin = 1;
-                const prizeMax = currentM > 1 ? currentM : 2;
-                let res = [];
-                const drawSize = Math.min(count, pool.length);
-                
-                for(let i=0; i<drawSize; i++) {
-                    let total = 0;
-                    let filteredPool = pool.filter(p => !thisDrawWinnerKeys.has(p.name + (p.phone || p.idNum || "")));
-                    if (filteredPool.length === 0) break;
-                    
-                    filteredPool.forEach(p => {
-                        p.currentWeight = getRescaledWeight(p, prizeMin, prizeMax);
-                        total += p.currentWeight;
-                    });
-                    
-                    let r = Math.random() * total;
-                    for(let j=0; j<filteredPool.length; j++) {
-                        r -= filteredPool[j].currentWeight;
-                        if(r <= 0) { 
-                            let winner = filteredPool[j];
-                            res.push(winner); 
-                            thisDrawWinnerKeys.add(winner.name + (winner.phone || winner.idNum || ""));
-                            break; 
-                        }
-                    }
-                }
-                return res;
-            }
-        }
-
-        function restoreButtons() {
-            const btn = document.getElementById('draw-btn');
-            const gBtn = document.getElementById('grand-draw-btn');
-            gBtn.disabled = false;
-            gBtn.className = "w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-black text-sm lg:text-base rounded-xl shadow-md shadow-amber-600/10 transition-all flex items-center justify-center gap-2 group truncate";
-            document.getElementById('grand-btn-text').innerText = "⚡ 一次抽選全部獎項";
-            document.getElementById('btn-text').innerText = "開始抽獎";
-            toggleSingleDrawMode();
-        }
-
-        function saveRecords() { 
-            safeLocalStorageSet('aurora_v2_winners', JSON.stringify(app.winners)); 
-        }
-
-        function renderWinners() {
-            const list = document.getElementById('win-log');
-            document.getElementById('win-cnt').innerText = app.winners.length;
-            if (app.winners.length === 0) {
-                list.innerHTML = `<div class="text-slate-400 text-center py-4 italic text-[11px]">暫無中獎紀錄</div>`;
-                stopAutoScroll();
-                return;
-            }
-            list.innerHTML = app.winners.map(w => {
-                const hasInvoiceVal = w.invoice && w.invoice.trim() !== "";
-                return `
-                    <div class="bg-slate-50 border border-slate-200/80 p-3 rounded-2xl flex flex-col gap-1.5 hover:border-brand-500/40 transition-all text-xs font-bold shadow-sm">
-                        <div class="flex justify-between items-center border-b border-slate-100 pb-1.5 mb-0.5">
-                            <span class="text-[11px] font-black text-brand-600 uppercase tracking-wider truncate max-w-[150px]" title="${w.prizeName}">${w.prizeName}</span>
-                            <span class="text-[10px] text-slate-400 font-mono">${w.time.split(' ')[1] || w.time}</span>
-                        </div>
-                        <div class="flex items-center justify-between text-slate-700 gap-1.5 font-bold">
-                            <span class="text-slate-800 truncate min-w-[50px] text-sm">${mask.name(w.name)}</span>
-                            <span class="font-mono text-slate-400 text-[11px] truncate max-w-[85px]">${mask.id(w.idNum)}</span>
-                            <span class="font-mono text-brand-600 text-[11px] text-right truncate min-w-[70px]">${hasInvoiceVal ? w.invoice : '無資料'}</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            startAutoScroll();
-        }
-
-        function clearAll() { 
-            stopAutoScroll();
-            stopStagePageScroll();
-            document.getElementById('confirm-clear-modal').classList.remove('hidden'); 
-        }
-        function closeConfirmModal() { document.getElementById('confirm-clear-modal').classList.add('hidden'); }
-
-        async function executeClear() {
-            app.winners = [];
-            saveRecords();
-            renderWinners();
-            if(app.gasUrl) {
-                const cleanUrl = getCleanUrl(app.gasUrl);
-                showToast('正在重置雲端試算表紀錄...', 'info');
-                const callbackName = 'clearCallback_' + Math.round(Math.random() * 1000000);
-                window[callbackName] = function(resData) {
-                    const script = document.getElementById(callbackName);
-                    if (script) script.remove();
-                    delete window[callbackName];
-                    if (resData.status === 'success') {
-                        showToast('雲端資料庫已同步重置！', 'success');
-                    }
-                };
-                const script = document.createElement('script');
-                script.id = callbackName;
-                script.src = `${cleanUrl}?action=clearWinners&callback=${callbackName}&_t=${new Date().getTime()}`;
-                script.onerror = function() {
-                    showToast('已向後端發送命令，因跨網域限制，請查看試算表確認。', 'info');
-                    delete window[callbackName];
-                    script.remove();
-                };
-                document.body.appendChild(script);
-            }
-            if (app.prizes) {
-                app.prizes.forEach(p => p.drawnCount = 0);
-                updatePrizeUI();
-                renderSidebarPrizeList();
-            }
-            closeConfirmModal();
-            localStorage.removeItem('aurora_v2_winners');
-            localStorage.removeItem('aurora_v2_participants');
-            localStorage.removeItem('aurora_v2_prizes');
-            showToast('本機紀錄已成功清空，網頁即將自動重新整理...', 'success');
-            setTimeout(() => { location.reload(); }, 1500);
-        }
-
-        function getCleanUrl(url) {
-            let clean = url.trim();
-            if (clean.includes('?')) {
-                clean = clean.split('?')[0];
-            }
-            return clean;
-        }
-
-        async function uploadAndRecord(winners, time, isGrandDraw) {
-            if(app.gasUrl) {
-                const cleanUrl = getCleanUrl(app.gasUrl);
-                logDiagnostic("📡 正在同步中獎名單至雲端試算表...");
-
-                try {
-                    await fetch(`${cleanUrl}?action=recordWinners`, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: {
-                            'Content-Type': 'text/plain'
-                        },
-                        body: JSON.stringify({ 
-                            prizeId: isGrandDraw ? null : (app.prize ? app.prize.id : null), 
-                            prizeName: isGrandDraw ? "一次抽選全部獎項" : (app.prize ? app.prize.name : "未知獎項"),
-                            isGrandDraw: isGrandDraw,
-                            winners: winners.map(w => ({ ...w, time }))
-                        })
-                    });
-                    
-                    showToast('中獎數據已成功同步至 Google 試算表！', 'success');
-                    logDiagnostic("✅ 中獎紀錄寫入指令發送完成。");
-                    
-                } catch(e) {
-                    console.error('中獎上傳錯誤:', e);
-                    showToast('傳送異常，請檢查網路連線或 GAS 應用程式網址。', 'error');
-                    logDiagnostic("❌ 寫入指令發送失敗：請檢查網路或網址設定。", true);
-                }
-            }
-        }
-    </script>
+        // 完成處理
+        progressPercent.textContent = "100%";
+        progressBar.style.width = "100%";
+        progressText.textContent = "巡檢完成！";
+
+        activeItem["巡檢狀態"] = "已巡檢";
+        activeItem["維護狀態"] = newStatus;
+        activeItem["巡檢人員"] = inspector;
+        activeItem["巡檢/調查日期"] = new Date().toISOString().slice(0,10).replace(/-/g, '/');
+        if (notes) activeItem["備註"] = notes;
+        applyFilters();
+
+        setTimeout(() => {
+          closeInspectModal();
+          alert(`✅【${title}】巡檢已同步！\n共 ${totalPhotos} 張照片已成功收納至雲端專屬資料夾。`);
+          loadDataFromGAS();
+        }, 500);
+
+      } catch (err) {
+        setButtonsDisabled(false);
+        progressBox.classList.add('hidden');
+        alert("上傳過程發生錯誤：" + err.message);
+      }
+    }
+
+    function locateUser() {
+      const icon = document.getElementById('locateIcon');
+      icon.className = "fa-solid fa-spinner fa-spin text-emerald-400";
+
+      if (!navigator.geolocation) {
+        alert("此瀏覽器不支援定位功能");
+        icon.className = "fa-solid fa-crosshairs text-emerald-400";
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          icon.className = "fa-solid fa-crosshairs text-emerald-400";
+
+          if (userMarker) map.removeLayer(userMarker);
+          userMarker = L.circleMarker([lat, lng], {
+            radius: 8,
+            fillColor: "#0284c7",
+            color: "#ffffff",
+            weight: 3,
+            fillOpacity: 1
+          }).addTo(map).bindPopup("<b>您目前的位置</b>").openPopup();
+
+          map.setView([lat, lng], 15);
+        },
+        () => {
+          alert("無法取得位置授權，請確認 iPhone 設定允許 Safari 取用定位。");
+          icon.className = "fa-solid fa-crosshairs text-emerald-400";
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    function toggleBottomSheet() {
+      const sheet = document.getElementById('bottomSheet');
+      isSheetOpen = !isSheetOpen;
+      sheet.style.transform = isSheetOpen ? "translateY(0)" : "translateY(100%)";
+    }
+
+    function toggleLegend() {
+      document.getElementById('legendBox').classList.toggle('hidden');
+    }
+  </script>
 </body>
 </html>
