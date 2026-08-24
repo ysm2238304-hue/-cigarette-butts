@@ -340,9 +340,9 @@
 
   <script>
     // ==========================================
-    // ⚙️ 設定區：請填入 GAS Web 應用程式網址
+    // ⚙️ 正式後端 GAS Web 應用程式網址
     // ==========================================
-    const GAS_ENDPOINT_URL = "YOUR_GAS_WEB_APP_URL"; 
+    const GAS_ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbzJKjUHrWB3K3vEGRPS-cM4Iff0XkTsQ9_zvbCk9SZZcctHzo1mp6AMhmF8wTRe1nSv/exec"; 
 
     // 示範/快取資料
     const FALLBACK_DATA = [
@@ -705,6 +705,7 @@
       document.getElementById('inspectStatus').value = item["維護狀態"] || "正常使用";
       document.getElementById('inspectNotes').value = "";
       
+      // 自動填入已登入巡檢員姓名
       document.getElementById('inspectorInput').value = currentInspector || item["巡檢人員"] || "";
 
       document.getElementById('photoPreview').classList.add('hidden');
