@@ -17,15 +17,12 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    :root {
-      --sat: env(safe-area-inset-top);
-      --sab: env(safe-area-inset-bottom);
-    }
-    body {
+    html, body {
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
-      padding-top: var(--sat);
-      padding-bottom: var(--sab);
     }
     .touch-scroll {
       -webkit-overflow-scrolling: touch;
@@ -44,14 +41,20 @@
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
+    .map-tag-label {
+      display: none;
+    }
+    .show-tags .map-tag-label {
+      display: block;
+    }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 flex flex-col h-screen overflow-hidden font-sans">
+<body class="bg-slate-900 text-slate-100 flex flex-col font-sans">
 
   <!-- ========================================== -->
   <!-- 1. 系統介紹與身分設定頁 -->
   <!-- ========================================== -->
-  <div id="welcomeScreen" class="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-xl flex flex-col justify-between p-6 max-w-lg mx-auto touch-scroll">
+  <div id="welcomeScreen" class="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-xl flex flex-col justify-between p-6 max-w-lg mx-auto touch-scroll pt-[max(24px,env(safe-area-inset-top))] pb-[max(24px,env(safe-area-inset-bottom))]">
     <div class="space-y-6 my-auto">
       <div class="text-center space-y-2">
         <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white text-3xl shadow-xl shadow-emerald-900/50 mx-auto">
@@ -82,12 +85,12 @@
         <div class="flex items-center gap-1.5 text-slate-300 font-semibold">
           <i class="fa-solid fa-circle-info text-teal-400"></i> 操作提示
         </div>
-        <p>• 照片將自動依「日期_人員 > 鄉鎮 > 地點」階層建夾歸檔。</p>
-        <p>• 建議允許 iPhone Safari 取用 GPS 定位以獲得精準導航。</p>
+        <p>• 支援單一地點上傳至 50 張現場照片，自動分批穩定上傳。</p>
+        <p>• 照片依「日期_人員 > 鄉鎮 > 地點」階層自動分流歸檔。</p>
       </div>
     </div>
 
-    <div class="pt-4">
+    <div>
       <button onclick="startInspectionSession()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-white text-sm font-bold shadow-lg shadow-emerald-900/50 hover:brightness-110 active:scale-95 transition flex items-center justify-center gap-2">
         <span>進入巡檢系統</span>
         <i class="fa-solid fa-arrow-right text-xs"></i>
@@ -98,7 +101,7 @@
   <!-- ========================================== -->
   <!-- 2. 主系統：頂部導航列 -->
   <!-- ========================================== -->
-  <header class="bg-slate-800/95 backdrop-blur-md border-b border-slate-700 px-4 py-2.5 z-30 shrink-0 shadow-md">
+  <header class="bg-slate-800/95 backdrop-blur-md border-b border-slate-700 px-4 pb-2.5 pt-[max(12px,env(safe-area-inset-top))] z-30 shrink-0 shadow-md">
     <div class="flex items-center justify-between gap-2 max-w-4xl mx-auto">
       
       <div class="flex items-center space-x-2">
@@ -176,7 +179,7 @@
   </div>
 
   <!-- iOS 底部抽屜清單 -->
-  <div id="bottomSheet" class="fixed inset-x-0 bottom-0 z-40 bg-slate-800/95 backdrop-blur-lg border-t border-slate-700 rounded-t-2xl shadow-2xl flex flex-col sheet-transition max-w-lg mx-auto" style="height: 65vh; transform: translateY(100%);">
+  <div id="bottomSheet" class="fixed inset-x-0 bottom-0 z-40 bg-slate-800/95 backdrop-blur-lg border-t border-slate-700 rounded-t-2xl shadow-2xl flex flex-col sheet-transition max-w-lg mx-auto pb-[env(safe-area-inset-bottom)]" style="height: 65vh; transform: translateY(100%);">
     <div class="px-4 pt-3 pb-2 flex flex-col items-center border-b border-slate-700/60 cursor-pointer" onclick="toggleBottomSheet()">
       <div class="w-10 h-1 rounded-full bg-slate-600 mb-2"></div>
       <div class="flex items-center justify-between w-full">
@@ -197,7 +200,7 @@
 
   <!-- 地點詳細規格 Modal -->
   <div id="detailModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-    <div class="bg-slate-800 border-t sm:border border-slate-700 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4 max-h-[88vh] overflow-y-auto touch-scroll">
+    <div class="bg-slate-800 border-t sm:border border-slate-700 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto touch-scroll pb-[max(20px,env(safe-area-inset-bottom))]">
       
       <div class="flex justify-between items-start border-b border-slate-700 pb-3">
         <div>
@@ -213,10 +216,8 @@
         </button>
       </div>
 
-      <!-- 數量看板 -->
       <div id="detailCountContainer"></div>
 
-      <!-- 詳細屬性欄位 -->
       <div class="space-y-2 text-xs">
         <div class="flex justify-between items-center py-1.5 border-b border-slate-700/60">
           <span class="text-slate-400"><i class="fa-solid fa-user-check text-slate-500 mr-1.5"></i> 巡檢人員</span>
@@ -248,7 +249,6 @@
         </div>
       </div>
 
-      <!-- 操作按鈕 -->
       <div class="flex gap-2 pt-2 border-t border-slate-700">
         <button id="detailNavBtn" onclick="navCurrentDetail()" class="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 active:scale-95 transition flex items-center justify-center gap-1.5 shadow-lg shadow-blue-900/30">
           <i class="fa-solid fa-location-arrow"></i>
@@ -263,9 +263,11 @@
     </div>
   </div>
 
-  <!-- 巡檢回報 Modal (含重設為未巡檢) -->
+  <!-- ========================================== -->
+  <!-- 3. 巡檢回報 Modal (最高支援 50 張分批上傳) -->
+  <!-- ========================================== -->
   <div id="inspectModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-    <div class="bg-slate-800 border-t sm:border border-slate-700 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4 max-h-[88vh] overflow-y-auto touch-scroll">
+    <div class="bg-slate-800 border-t sm:border border-slate-700 rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4 max-h-[88vh] overflow-y-auto touch-scroll pb-[max(20px,env(safe-area-inset-bottom))]">
       
       <div class="flex justify-between items-start border-b border-slate-700 pb-3">
         <div>
@@ -299,20 +301,43 @@
         </select>
       </div>
 
-      <!-- 現場拍照 -->
+      <!-- 多照片上傳與預覽網格 (最高支援 50 張) -->
       <div>
-        <label class="block text-xs font-medium text-slate-300 mb-1 flex justify-between">
-          <span><i class="fa-solid fa-camera text-emerald-400 mr-1"></i> 現場拍照 (自動存至 Google Drive)</span>
-          <span id="photoCompressNotice" class="text-[10px] text-emerald-400 hidden"><i class="fa-solid fa-check"></i> 圖片已就緒</span>
+        <label class="block text-xs font-medium text-slate-300 mb-1 flex justify-between items-center">
+          <span><i class="fa-solid fa-images text-emerald-400 mr-1"></i> 現場照片 (<span id="photoCountLabel">已選 0 / 50 張</span>)</span>
+          <span id="compressStatus" class="text-[10px] text-teal-300 hidden"><i class="fa-solid fa-arrows-rotate fa-spin mr-0.5"></i> 正在壓縮處理...</span>
         </label>
-        <div class="relative border-2 border-dashed border-slate-600 rounded-xl p-3 text-center bg-slate-700/30 hover:bg-slate-700/50 transition cursor-pointer" onclick="document.getElementById('cameraInput').click()">
-          <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoSelect(event)">
-          <div id="photoPlaceholder" class="space-y-1">
-            <i class="fa-solid fa-camera-retro text-2xl text-slate-400"></i>
-            <p class="text-xs text-slate-300 font-medium">點擊拍照或選取照片</p>
-            <p class="text-[10px] text-slate-500">支援 iPhone 相機自動方向校正與壓縮</p>
-          </div>
-          <img id="photoPreview" class="hidden w-full h-36 object-cover rounded-lg mx-auto shadow-md">
+        
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <!-- 直開相機 -->
+          <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelect(event)">
+          <button type="button" onclick="document.getElementById('cameraInput').click()" class="py-2.5 px-3 rounded-xl bg-slate-700/80 hover:bg-slate-700 border border-slate-600 text-xs font-medium flex items-center justify-center gap-1.5 active:scale-95 transition">
+            <i class="fa-solid fa-camera text-emerald-400"></i>
+            <span>相機現場拍照</span>
+          </button>
+
+          <!-- 相簿多選 (可批次選取多達 50 張) -->
+          <input type="file" id="galleryInput" accept="image/*" multiple class="hidden" onchange="handleFileSelect(event)">
+          <button type="button" onclick="document.getElementById('galleryInput').click()" class="py-2.5 px-3 rounded-xl bg-slate-700/80 hover:bg-slate-700 border border-slate-600 text-xs font-medium flex items-center justify-center gap-1.5 active:scale-95 transition">
+            <i class="fa-solid fa-photo-film text-teal-400"></i>
+            <span>從相簿多選 (至50張)</span>
+          </button>
+        </div>
+
+        <!-- 縮圖預覽網格 -->
+        <div id="photoGrid" class="grid grid-cols-4 gap-2 bg-slate-900/60 p-2 rounded-xl border border-slate-700/60 max-h-40 overflow-y-auto touch-scroll items-center">
+          <div id="emptyPhotoNotice" class="col-span-4 text-center text-slate-500 text-[11px] py-3">尚未選擇照片，可拍照或由相簿批次選取</div>
+        </div>
+      </div>
+
+      <!-- 即時上傳進度條 (預設隱藏，上傳時動態顯示) -->
+      <div id="uploadProgressBox" class="hidden bg-slate-900/80 p-3 rounded-xl border border-teal-500/40 space-y-1.5">
+        <div class="flex justify-between text-xs text-teal-300 font-medium">
+          <span id="uploadProgressText">準備上傳...</span>
+          <span id="uploadProgressPercent">0%</span>
+        </div>
+        <div class="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+          <div id="uploadProgressBar" class="bg-gradient-to-r from-teal-400 to-emerald-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
         </div>
       </div>
 
@@ -324,9 +349,9 @@
         <textarea id="inspectNotes" rows="2" placeholder="填寫現場狀況或修繕紀錄..." class="w-full bg-slate-700 border border-slate-600 text-white rounded-lg p-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"></textarea>
       </div>
 
-      <!-- 重設為未巡檢 (防呆誤觸) -->
+      <!-- 重設為未巡檢 (防呆) -->
       <div class="pt-1">
-        <button type="button" onclick="resetToUninspected()" class="w-full py-2 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 hover:bg-rose-900/60 active:scale-95 transition text-xs font-semibold flex items-center justify-center gap-1.5">
+        <button type="button" id="resetBtn" onclick="resetToUninspected()" class="w-full py-2 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 hover:bg-rose-900/60 active:scale-95 transition text-xs font-semibold flex items-center justify-center gap-1.5">
           <i class="fa-solid fa-rotate-left"></i>
           <span>回復為「未巡檢」狀態</span>
         </button>
@@ -334,8 +359,8 @@
 
       <!-- 送出按鈕 -->
       <div class="flex gap-2 pt-2 border-t border-slate-700">
-        <button onclick="closeInspectModal()" class="flex-1 py-2 rounded-xl bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition">取消</button>
-        <button id="saveBtn" onclick="submitInspectionRecord()" class="flex-1 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white text-xs font-bold hover:brightness-110 shadow-lg shadow-emerald-900/40 active:scale-95 transition flex items-center justify-center gap-1.5">
+        <button type="button" id="cancelBtn" onclick="closeInspectModal()" class="flex-1 py-2.5 rounded-xl bg-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-600 transition">取消</button>
+        <button type="button" id="saveBtn" onclick="submitInspectionRecord()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white text-xs font-bold hover:brightness-110 shadow-lg shadow-emerald-900/40 active:scale-95 transition flex items-center justify-center gap-1.5">
           <i class="fa-solid fa-cloud-arrow-up"></i>
           <span>確認並同步</span>
         </button>
@@ -353,7 +378,7 @@
     let filteredData = [];
     let activeTownship = "ALL";
     let activeItem = null;
-    let compressedBase64 = null;
+    let selectedImages = [];
     let currentInspector = "";
     let map, markerLayerGroup, userMarker = null;
     let isSheetOpen = false;
@@ -411,6 +436,16 @@
         maxZoom: 19
       }).addTo(map);
       markerLayerGroup = L.layerGroup().addTo(map);
+      map.on('zoomend', updateTagVisibility);
+    }
+
+    function updateTagVisibility() {
+      const mapContainer = document.getElementById('map');
+      if (map.getZoom() >= 14) {
+        mapContainer.classList.add('show-tags');
+      } else {
+        mapContainer.classList.remove('show-tags');
+      }
     }
 
     function loadDataFromGAS() {
@@ -481,6 +516,7 @@
       updateStatistics();
       renderMapMarkers();
       renderListView();
+      updateTagVisibility();
     }
 
     function updateStatistics() {
@@ -517,13 +553,12 @@
           let colorBg = isDone ? "#10b981" : (isMissing ? "#f59e0b" : "#ef4444");
           const shortTitle = title.length > 8 ? title.slice(0, 8) + '...' : title;
 
-          // 圖示與地點小字
           let iconHtml = `
             <div class="flex items-center gap-1" style="transform: translate(-10px, -10px);">
               <div style="background-color: ${colorBg}; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); shrink-0;">
                 <i class="fa-solid fa-smoking"></i>
               </div>
-              <span style="background: rgba(15, 23, 42, 0.85); color: #f8fafc; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(51, 65, 85, 0.8); white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.3); pointer-events: none;">
+              <span class="map-tag-label" style="background: rgba(15, 23, 42, 0.85); color: #f8fafc; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(51, 65, 85, 0.8); white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.3); pointer-events: none;">
                 ${shortTitle}
               </span>
             </div>
@@ -693,6 +728,7 @@
 
     function closeDetailModal() {
       document.getElementById('detailModal').classList.add('hidden');
+      window.scrollTo(0, 0);
     }
 
     function navCurrentDetail() {
@@ -715,65 +751,122 @@
 
     function openInspectModal(item) {
       activeItem = item;
-      compressedBase64 = null;
+      selectedImages = [];
+      renderPhotoGrid();
+      
+      // 隱藏進度條
+      document.getElementById('uploadProgressBox').classList.add('hidden');
+      document.getElementById('uploadProgressBar').style.width = '0%';
+      setButtonsDisabled(false);
+
       document.getElementById('modalTownBadge').textContent = item["鄉鎮市"] || item["鄉鎮市區"] || "南投縣";
       document.getElementById('modalPlaceTitle').textContent = getItemTitle(item);
       document.getElementById('modalAddress').textContent = getItemAddress(item);
       document.getElementById('inspectStatus').value = item["維護狀態"] || "正常使用";
       document.getElementById('inspectNotes').value = "";
-      
       document.getElementById('inspectorInput').value = currentInspector || item["巡檢人員"] || "";
 
-      document.getElementById('photoPreview').classList.add('hidden');
-      document.getElementById('photoPlaceholder').classList.remove('hidden');
-      document.getElementById('photoCompressNotice').classList.add('hidden');
       document.getElementById('cameraInput').value = "";
+      document.getElementById('galleryInput').value = "";
 
       document.getElementById('inspectModal').classList.remove('hidden');
     }
 
     function closeInspectModal() {
       document.getElementById('inspectModal').classList.add('hidden');
+      window.scrollTo(0, 0);
     }
 
-    function handlePhotoSelect(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+    function setButtonsDisabled(disabled) {
+      document.getElementById('saveBtn').disabled = disabled;
+      document.getElementById('cancelBtn').disabled = disabled;
+      document.getElementById('resetBtn').disabled = disabled;
+    }
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-          const canvas = document.createElement('canvas');
-          const maxDim = 1200;
-          let w = img.width, h = img.height;
+    // ==========================================
+    // 循序高畫質保真壓縮 (最高支援 50 張)
+    // ==========================================
+    function compressSingleFile(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const maxDim = 1200;
+            let w = img.width, h = img.height;
 
-          if (w > h && w > maxDim) {
-            h = (maxDim / w) * h;
-            w = maxDim;
-          } else if (h > maxDim) {
-            w = (maxDim / h) * w;
-            h = maxDim;
-          }
+            if (w > h && w > maxDim) {
+              h = Math.round((maxDim / w) * h);
+              w = maxDim;
+            } else if (h > maxDim) {
+              w = Math.round((maxDim / h) * w);
+              h = maxDim;
+            }
 
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
-          compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
-
-          const preview = document.getElementById('photoPreview');
-          preview.src = compressedBase64;
-          preview.classList.remove('hidden');
-          document.getElementById('photoPlaceholder').classList.add('hidden');
-          document.getElementById('photoCompressNotice').classList.remove('hidden');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.65));
+          };
+          img.src = e.target.result;
         };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
+        reader.readAsDataURL(file);
+      });
     }
 
-    // 重設為未巡檢狀態
+    async function handleFileSelect(event) {
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
+
+      const compressStatus = document.getElementById('compressStatus');
+      compressStatus.classList.remove('hidden');
+
+      for (let i = 0; i < files.length; i++) {
+        if (selectedImages.length >= 50) {
+          alert("已達上限 50 張照片！");
+          break;
+        }
+        compressStatus.innerHTML = `<i class="fa-solid fa-arrows-rotate fa-spin mr-0.5"></i> 正在壓縮處理 (${i+1}/${files.length})...`;
+        const b64 = await compressSingleFile(files[i]);
+        selectedImages.push(b64);
+      }
+
+      compressStatus.classList.add('hidden');
+      renderPhotoGrid();
+      event.target.value = "";
+    }
+
+    function renderPhotoGrid() {
+      const grid = document.getElementById('photoGrid');
+      const countLabel = document.getElementById('photoCountLabel');
+      countLabel.textContent = `已選 ${selectedImages.length} / 50 張`;
+
+      if (selectedImages.length === 0) {
+        grid.innerHTML = '<div id="emptyPhotoNotice" class="col-span-4 text-center text-slate-500 text-[11px] py-3">尚未選擇照片，可拍照或由相簿批次選取</div>';
+        return;
+      }
+
+      grid.innerHTML = "";
+      selectedImages.forEach((imgSrc, idx) => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = "relative aspect-square rounded-lg overflow-hidden border border-slate-600 group bg-slate-800";
+        itemDiv.innerHTML = `
+          <img src="${imgSrc}" class="w-full h-full object-cover">
+          <button type="button" onclick="removeImage(${idx})" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-600/90 text-white text-[10px] flex items-center justify-center shadow-md active:scale-90 transition">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        `;
+        grid.appendChild(itemDiv);
+      });
+    }
+
+    function removeImage(index) {
+      selectedImages.splice(index, 1);
+      renderPhotoGrid();
+    }
+
     function resetToUninspected() {
       if (!activeItem) return;
       const title = getItemTitle(activeItem);
@@ -808,12 +901,20 @@
       });
     }
 
-    // 提交巡檢紀錄 (攜帶階層歸檔所需資訊)
-    function submitInspectionRecord() {
+    // ==========================================
+    // 多照片分批上傳核心邏輯 (支援多達 50 張)
+    // ==========================================
+    async function submitInspectionRecord() {
       if (!activeItem) return;
+      
       const saveBtn = document.getElementById('saveBtn');
-      saveBtn.disabled = true;
-      saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 上傳中...';
+      const progressBox = document.getElementById('uploadProgressBox');
+      const progressText = document.getElementById('uploadProgressText');
+      const progressPercent = document.getElementById('uploadProgressPercent');
+      const progressBar = document.getElementById('uploadProgressBar');
+
+      setButtonsDisabled(true);
+      progressBox.classList.remove('hidden');
 
       const inspector = document.getElementById('inspectorInput').value.trim() || currentInspector || "未具名";
       const newStatus = document.getElementById('inspectStatus').value;
@@ -821,44 +922,86 @@
       const sheetName = document.getElementById('sheetSelect').value;
       const title = getItemTitle(activeItem);
       const town = activeItem["鄉鎮市"] || activeItem["鄉鎮市區"] || "其他鄉鎮";
+      const totalPhotos = selectedImages.length;
 
-      const payload = {
-        sheetName: sheetName,
-        id: activeItem["熄菸桶編號"] || activeItem.id,
-        rowIndex: activeItem.rowIndex || activeItem.id,
-        status: newStatus,
-        inspector: inspector,
-        township: town,
-        location: title,
-        notes: notes,
-        imageBase64: compressedBase64
-      };
+      // 步驟 1: 更新試算表紀錄與取得專屬階層資料夾
+      progressText.textContent = "正在建立專屬資料夾與更新試算表...";
+      progressPercent.textContent = totalPhotos > 0 ? "5%" : "80%";
+      progressBar.style.width = totalPhotos > 0 ? "5%" : "80%";
 
-      activeItem["巡檢狀態"] = "已巡檢";
-      activeItem["維護狀態"] = newStatus;
-      activeItem["巡檢人員"] = inspector;
-      activeItem["巡檢/調查日期"] = new Date().toISOString().slice(0,10).replace(/-/g, '/');
-      if (notes) activeItem["備註"] = payload.notes;
-      applyFilters();
+      try {
+        const initRes = await fetch(GAS_ENDPOINT_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            sheetName: sheetName,
+            id: activeItem["熄菸桶編號"] || activeItem.id,
+            rowIndex: activeItem.rowIndex || activeItem.id,
+            status: newStatus,
+            inspector: inspector,
+            township: town,
+            location: title,
+            notes: notes,
+            hasPhotos: totalPhotos > 0
+          })
+        }).then(r => r.json());
 
-      fetch(GAS_ENDPOINT_URL, {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      })
-      .then(res => res.json())
-      .then(res => {
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>確認並同步</span>';
-        closeInspectModal();
-        alert(`✅ [${title}] 巡檢已同步！照片已依階層建夾儲存。`);
-        loadDataFromGAS();
-      })
-      .catch(err => {
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>確認並同步</span>';
-        closeInspectModal();
-        alert("已更新本地畫面 (雲端連線逾時)");
-      });
+        if (initRes.status !== "success") {
+          throw new Error(initRes.message || "更新失敗");
+        }
+
+        // 步驟 2: 分段批次上傳 50 張照片 (每批 4 張)
+        if (totalPhotos > 0 && initRes.targetFolderId) {
+          const batchSize = 4;
+          const totalBatches = Math.ceil(totalPhotos / batchSize);
+
+          for (let b = 0; b < totalBatches; b++) {
+            const start = b * batchSize;
+            const end = Math.min(start + batchSize, totalPhotos);
+            const chunk = selectedImages.slice(start, end);
+
+            const currentUploaded = start + chunk.length;
+            const pct = Math.round((currentUploaded / totalPhotos) * 90) + 5;
+
+            progressText.textContent = `正在上傳照片 (${currentUploaded}/${totalPhotos} 張)...`;
+            progressPercent.textContent = `${pct}%`;
+            progressBar.style.width = `${pct}%`;
+
+            await fetch(GAS_ENDPOINT_URL, {
+              method: 'POST',
+              body: JSON.stringify({
+                action: "upload_photo_batch",
+                targetFolderId: initRes.targetFolderId,
+                location: title,
+                startIndex: start + 1,
+                images: chunk
+              })
+            }).then(r => r.json());
+          }
+        }
+
+        // 完成處理
+        progressPercent.textContent = "100%";
+        progressBar.style.width = "100%";
+        progressText.textContent = "巡檢完成！";
+
+        activeItem["巡檢狀態"] = "已巡檢";
+        activeItem["維護狀態"] = newStatus;
+        activeItem["巡檢人員"] = inspector;
+        activeItem["巡檢/調查日期"] = new Date().toISOString().slice(0,10).replace(/-/g, '/');
+        if (notes) activeItem["備註"] = notes;
+        applyFilters();
+
+        setTimeout(() => {
+          closeInspectModal();
+          alert(`✅【${title}】巡檢已同步！\n共 ${totalPhotos} 張照片已成功收納至雲端專屬資料夾。`);
+          loadDataFromGAS();
+        }, 500);
+
+      } catch (err) {
+        setButtonsDisabled(false);
+        progressBox.classList.add('hidden');
+        alert("上傳過程發生錯誤：" + err.message);
+      }
     }
 
     function locateUser() {
