@@ -353,12 +353,12 @@
         </div>
       </div>
 
-      <!-- 現場說明文字 (對齊試算表 R 欄現場狀況說明) -->
+      <!-- 現場說明文字 (預設留空，無多餘預設文字) -->
       <div>
         <label id="notesLabel" class="block text-xs font-medium text-slate-300 mb-1">
           <i class="fa-solid fa-pen-to-square text-emerald-400 mr-1"></i> 現場說明文字 <span class="text-slate-400 font-normal">(選填)</span>
         </label>
-        <textarea id="inspectNotes" rows="2" placeholder="現場無異常，可留空或填寫維護細節..." class="w-full bg-slate-700 border border-slate-600 text-white rounded-lg p-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none transition"></textarea>
+        <textarea id="inspectNotes" rows="2" placeholder="" class="w-full bg-slate-700 border border-slate-600 text-white rounded-lg p-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none transition"></textarea>
       </div>
 
       <!-- 重設為未巡檢 -->
@@ -420,7 +420,7 @@
       return item["現場狀況說明"] || item["備註"] || item["備註說明"] || "";
     }
 
-    // ⭐ 通用日期解析函式 (自動校正 UTC 時差，轉為本地臺灣日期 YYYY/MM/DD)
+    // 通用日期解析函式 (轉回本地時區 YYYY/MM/DD)
     function getItemDate(item) {
       let val = item["巡檢/調查日期"] || item["巡檢日期"] || item["調查日期"] || item["查核日期"] || item["日期"] || "";
       if (!val) return "尚未巡檢";
@@ -898,7 +898,8 @@
       statusSelect.value = currentStatus;
       if (!statusSelect.value) statusSelect.value = "正常設置使用中";
 
-      document.getElementById('inspectNotes').value = getItemNotes(item);
+      // 載入既有說明，若無則保持乾淨空白
+      document.getElementById('inspectNotes').value = getItemNotes(item) || "";
       document.getElementById('inspectorInput').value = currentInspector || item["巡檢人員"] || "";
 
       document.getElementById('cameraInput').value = "";
@@ -909,7 +910,7 @@
       document.getElementById('inspectModal').classList.remove('hidden');
     }
 
-    // 動態更新「現場說明文字」標籤與提示範例
+    // 動態更新「現場說明文字」標籤
     function onInspectStatusChange() {
       const status = document.getElementById('inspectStatus').value;
       const notesLabel = document.getElementById('notesLabel');
@@ -917,27 +918,21 @@
 
       if (status === "正常設置使用中") {
         notesLabel.innerHTML = `<i class="fa-solid fa-pen-to-square text-emerald-400 mr-1"></i> 現場說明文字 <span class="text-slate-400 font-normal">(選填)</span>`;
-        inspectNotes.placeholder = "現場無異常，可留空或填寫維護細節...";
         inspectNotes.className = "w-full bg-slate-700 border border-slate-600 text-white rounded-lg p-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none transition";
       } else if (status === "零件缺失異常/損壞待修") {
         notesLabel.innerHTML = `<i class="fa-solid fa-pen-to-square text-amber-400 mr-1"></i> 現場說明文字 <span class="text-rose-400 font-bold">(必填)*</span>`;
-        inspectNotes.placeholder = "請說明損壞情況（如：盒蓋脫落、鎖扣損壞...）";
         inspectNotes.className = "w-full bg-slate-700 border border-amber-500/80 text-white rounded-lg p-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none transition";
       } else if (status === "有熄菸設施但未設置") {
         notesLabel.innerHTML = `<i class="fa-solid fa-pen-to-square text-orange-400 mr-1"></i> 現場說明文字 <span class="text-rose-400 font-bold">(必填)*</span>`;
-        inspectNotes.placeholder = "請說明未設置原因（如：店家收置於室內未掛出...）";
         inspectNotes.className = "w-full bg-slate-700 border border-orange-500/80 text-white rounded-lg p-2 text-xs focus:ring-1 focus:ring-orange-500 focus:outline-none transition";
       } else if (status === "有熄菸設施但數量未完全") {
         notesLabel.innerHTML = `<i class="fa-solid fa-pen-to-square text-rose-400 mr-1"></i> 現場說明文字 <span class="text-rose-400 font-bold">(必填)*</span>`;
-        inspectNotes.placeholder = "請說明數量差異（如：應設 2 支，現場僅有 1 支...）";
         inspectNotes.className = "w-full bg-slate-700 border border-rose-500/80 text-white rounded-lg p-2 text-xs focus:ring-1 focus:ring-rose-500 focus:outline-none transition";
       } else if (status === "未發現有熄菸設施") {
         notesLabel.innerHTML = `<i class="fa-solid fa-pen-to-square text-purple-400 mr-1"></i> 現場說明文字 <span class="text-rose-400 font-bold">(必填)*</span>`;
-        inspectNotes.placeholder = "請說明現場狀況（如：店家表示無此設施、已遺失...）";
         inspectNotes.className = "w-full bg-slate-700 border border-purple-500/80 text-white rounded-lg p-2 text-xs focus:ring-1 focus:ring-purple-500 focus:outline-none transition";
       } else if (status === "其他") {
         notesLabel.innerHTML = `<i class="fa-solid fa-pen-to-square text-sky-400 mr-1"></i> 現場說明文字 <span class="text-rose-400 font-bold">(必填)*</span>`;
-        inspectNotes.placeholder = "請詳細說明現場其他特殊狀況...";
         inspectNotes.className = "w-full bg-slate-700 border border-sky-400/80 text-white rounded-lg p-2 text-xs focus:ring-1 focus:ring-sky-300 focus:outline-none transition";
       }
     }
@@ -1171,7 +1166,7 @@
 
         setTimeout(() => {
           closeInspectModal();
-          alert(`✅【${title}】巡檢已同步！\n維護狀態：${newStatus}\n現場說明文字已寫入試算表 R 欄。`);
+          alert("巡檢回報成功！");
           loadDataFromGAS();
         }, 500);
 
