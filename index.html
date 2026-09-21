@@ -47,6 +47,10 @@
     .show-tags .map-tag-label {
       display: block;
     }
+    /* 完全去除地圖浮水印與版權標籤 */
+    .leaflet-control-attribution {
+      display: none !important;
+    }
   </style>
 </head>
 <body class="bg-slate-900 text-slate-100 flex flex-col font-sans">
@@ -353,7 +357,7 @@
         </div>
       </div>
 
-      <!-- 現場說明文字 (預設留空，無多餘預設文字) -->
+      <!-- 現場說明文字 (預設留空) -->
       <div>
         <label id="notesLabel" class="block text-xs font-medium text-slate-300 mb-1">
           <i class="fa-solid fa-pen-to-square text-emerald-400 mr-1"></i> 現場說明文字 <span class="text-slate-400 font-normal">(選填)</span>
@@ -415,12 +419,10 @@
       return item["設置詳細地址"] || item["設置場址"] || item["地址"] || "無詳細地址";
     }
 
-    // 取得現場狀況說明 (優先讀取 R 欄「現場狀況說明」，向下相容「備註」)
     function getItemNotes(item) {
       return item["現場狀況說明"] || item["備註"] || item["備註說明"] || "";
     }
 
-    // 通用日期解析函式 (轉回本地時區 YYYY/MM/DD)
     function getItemDate(item) {
       let val = item["巡檢/調查日期"] || item["巡檢日期"] || item["調查日期"] || item["查核日期"] || item["日期"] || "";
       if (!val) return "尚未巡檢";
@@ -499,12 +501,19 @@
       document.getElementById('welcomeScreen').classList.remove('hidden');
     }
 
+    // ⭐ 更換為 Google 地圖圖資並去除浮水印
     function initMap() {
-      map = L.map('map', { zoomControl: false }).setView([23.9098, 120.6853], 11);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; CartoDB & OpenStreetMap',
-        maxZoom: 19
+      map = L.map('map', { 
+        zoomControl: false,
+        attributionControl: false // 關閉右下角浮水印與版權宣告
+      }).setView([23.9098, 120.6853], 11);
+
+      // Google Maps 標準街道圖圖磚 (無浮水印)
+      L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        subdomains: ['0', '1', '2', '3'],
+        maxZoom: 20
       }).addTo(map);
+
       markerLayerGroup = L.layerGroup().addTo(map);
       map.on('zoomend', updateTagVisibility);
     }
@@ -632,7 +641,6 @@
       renderStatusFilterChips(counts, total);
     }
 
-    // 渲染 4x2 緊湊網格按鈕
     function renderStatusFilterChips(counts, total) {
       const container = document.getElementById('statusFilterChips');
       container.innerHTML = "";
@@ -898,7 +906,6 @@
       statusSelect.value = currentStatus;
       if (!statusSelect.value) statusSelect.value = "正常設置使用中";
 
-      // 載入既有說明，若無則保持乾淨空白
       document.getElementById('inspectNotes').value = getItemNotes(item) || "";
       document.getElementById('inspectorInput').value = currentInspector || item["巡檢人員"] || "";
 
@@ -910,7 +917,6 @@
       document.getElementById('inspectModal').classList.remove('hidden');
     }
 
-    // 動態更新「現場說明文字」標籤
     function onInspectStatusChange() {
       const status = document.getElementById('inspectStatus').value;
       const notesLabel = document.getElementById('notesLabel');
@@ -1066,7 +1072,6 @@
       });
     }
 
-    // 巡檢回報送出
     async function submitInspectionRecord() {
       if (!activeItem) return;
       
@@ -1119,7 +1124,6 @@
           throw new Error(initRes.message || "更新失敗");
         }
 
-        // 分批上傳照片 (每批 4 張)
         if (totalPhotos > 0 && initRes.targetFolderId) {
           const batchSize = 4;
           const totalBatches = Math.ceil(totalPhotos / batchSize);
