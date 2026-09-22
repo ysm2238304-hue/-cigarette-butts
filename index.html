@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  
+  <!-- ⭐ 關鍵：關閉 iOS 系統毛玻璃遮罩，文字瞬間恢復高對比與極致銳利 -->
+  <meta name="theme-color" content="#020617">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="熄菸巡檢">
   <title>南投縣熄菸設施巡檢系統</title>
   
@@ -24,6 +27,11 @@
       -webkit-tap-highlight-color: transparent;
       user-select: none;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    /* 全域禁用任何毛玻璃濾鏡，維持最高清渲染 */
+    * {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
     }
     .touch-scroll {
       -webkit-overflow-scrolling: touch;
@@ -48,7 +56,7 @@
     .show-tags .map-tag-label {
       display: block;
     }
-    /* 完全去除地圖浮水印與版權標籤 */
+    /* 去除 Leaflet 浮水印與版權標籤 */
     .leaflet-control-attribution {
       display: none !important;
     }
@@ -109,14 +117,14 @@
   <div id="map" class="fixed inset-0 z-0 w-full h-full bg-slate-950"></div>
 
   <!-- ========================================== -->
-  <!-- 3. iOS 頂部懸浮控制中樞 (統一單軸 max-w-md 垂直排布) -->
+  <!-- 3. iOS 頂部懸浮控制中樞 (純色實底無霧化) -->
   <!-- ========================================== -->
-  <div class="fixed top-0 inset-x-0 z-30 pt-[max(10px,env(safe-area-inset-top))] px-3 pointer-events-none flex flex-col items-center gap-1.5">
+  <div class="fixed top-0 inset-x-0 z-30 pt-[calc(env(safe-area-inset-top)+8px)] px-3 pointer-events-none flex flex-col items-center gap-1.5">
     
     <div class="w-full max-w-md flex flex-col gap-1.5">
       
-      <!-- 主功能懸浮卡 -->
-      <div class="pointer-events-auto bg-slate-900/95 border border-slate-700/90 rounded-2xl px-3 py-2 shadow-2xl flex items-center justify-between gap-2">
+      <!-- 主功能懸浮卡 (100% 實體純色，字體立體銳利) -->
+      <div class="pointer-events-auto bg-slate-900 border border-slate-750 rounded-2xl px-3.5 py-2 shadow-2xl flex items-center justify-between gap-2">
         <!-- 左側：識別 Logo ＋ 人員身分 -->
         <div class="flex items-center space-x-2.5 min-w-0">
           <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white shadow-md shadow-emerald-950/60 shrink-0">
@@ -137,7 +145,7 @@
 
         <!-- 右側：年度切換 ＋ 清單 -->
         <div class="flex items-center gap-1.5 shrink-0">
-          <select id="sheetSelect" onchange="loadDataFromGAS()" class="bg-slate-800 text-slate-100 text-xs rounded-xl px-2 py-1.5 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium">
+          <select id="sheetSelect" onchange="loadDataFromGAS()" class="bg-slate-800 text-slate-100 text-xs rounded-xl px-2.5 py-1.5 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium">
             <option value="114年熄菸桶設置清單" selected>114年</option>
             <option value="113年熄菸桶設置清單">113年</option>
           </select>
@@ -147,11 +155,11 @@
         </div>
       </div>
 
-      <!-- 鄉鎮市懸浮膠囊區 (自動折行展開，全部完整呈現，絕不切邊) -->
+      <!-- 鄉鎮市懸浮膠囊區 (自動折行展開，全部完整呈現) -->
       <div class="pointer-events-auto flex flex-wrap items-center gap-1.5 py-1 w-full" id="townshipTabs"></div>
 
       <!-- 戰情進度折疊卡片 -->
-      <div id="dashboardCard" class="pointer-events-auto bg-slate-900/95 border border-slate-700/90 rounded-2xl p-2.5 shadow-2xl transition-all duration-300">
+      <div id="dashboardCard" class="pointer-events-auto bg-slate-900 border border-slate-750 rounded-2xl p-2.5 shadow-2xl transition-all duration-300">
         <!-- 點擊展開/收合列 -->
         <div class="flex justify-between items-center cursor-pointer" onclick="toggleDashboard()">
           <div class="flex items-center gap-2">
@@ -187,10 +195,10 @@
   <!-- 4. 右下角快捷按鈕群 (iOS 拇指觸及區) -->
   <!-- ========================================== -->
   <div class="fixed bottom-7 right-3.5 z-20 flex flex-col gap-2.5">
-    <button onclick="locateUser()" class="w-11 h-11 rounded-2xl bg-slate-900/95 text-slate-200 border border-slate-700 shadow-2xl flex items-center justify-center active:bg-slate-800 active:scale-95 transition">
+    <button onclick="locateUser()" class="w-11 h-11 rounded-2xl bg-slate-900 text-slate-200 border border-slate-700 shadow-2xl flex items-center justify-center active:bg-slate-800 active:scale-95 transition">
       <i class="fa-solid fa-crosshairs text-base text-emerald-400" id="locateIcon"></i>
     </button>
-    <button onclick="toggleLegend()" class="w-11 h-11 rounded-2xl bg-slate-900/95 text-slate-200 border border-slate-700 shadow-2xl flex items-center justify-center active:bg-slate-800 active:scale-95 transition">
+    <button onclick="toggleLegend()" class="w-11 h-11 rounded-2xl bg-slate-900 text-slate-200 border border-slate-700 shadow-2xl flex items-center justify-center active:bg-slate-800 active:scale-95 transition">
       <i class="fa-solid fa-layer-group text-sm text-slate-300"></i>
     </button>
   </div>
@@ -209,7 +217,7 @@
   </div>
 
   <!-- iOS 底部抽屜清單 -->
-  <div id="bottomSheet" class="fixed inset-x-0 bottom-0 z-40 bg-slate-900 border-t border-slate-700 rounded-t-3xl shadow-2xl flex flex-col sheet-transition max-w-lg mx-auto pb-[env(safe-area-inset-bottom)]" style="height: 65vh; transform: translateY(100%);">
+  <div id="bottomSheet" class="fixed inset-x-0 bottom-0 z-40 bg-slate-900 border-t border-slate-750 rounded-t-3xl shadow-2xl flex flex-col sheet-transition max-w-lg mx-auto pb-[env(safe-area-inset-bottom)]" style="height: 65vh; transform: translateY(100%);">
     <div class="px-4 pt-3 pb-2 flex flex-col items-center border-b border-slate-800 cursor-pointer" onclick="toggleBottomSheet()">
       <div class="w-10 h-1.5 rounded-full bg-slate-700 mb-2.5"></div>
       <div class="flex items-center justify-between w-full">
@@ -569,7 +577,7 @@
       applyFilters();
     }
 
-    // 渲染折行鄉鎮膠囊列 (全數完整展開、免滑動、絕不切邊)
+    // 渲染折行鄉鎮膠囊列 (純深色實體背景)
     function renderTownshipTabs() {
       const towns = ["ALL", ...new Set(allData.map(d => d["鄉鎮市"] || d["鄉鎮市區"]).filter(Boolean))];
       const container = document.getElementById('townshipTabs');
@@ -581,7 +589,7 @@
         btn.className = `px-2.5 py-1 rounded-full text-xs font-semibold leading-tight transition-all active:scale-95 shadow-sm border ${
           isActive 
             ? 'bg-emerald-500 text-white border-emerald-400 shadow-emerald-950/60 font-bold' 
-            : 'bg-slate-900/95 text-slate-300 border-slate-750 hover:bg-slate-800'
+            : 'bg-slate-900 text-slate-300 border-slate-750 hover:bg-slate-800'
         }`;
         btn.textContent = (town === "ALL") ? "全部鄉鎮" : town;
         btn.onclick = () => {
@@ -726,7 +734,7 @@
               <div style="background-color: ${theme.color}; width: 32px; height: 32px; border-radius: 50%; border: 2.5px solid #ffffff; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 15px; box-shadow: 0 3px 8px rgba(0,0,0,0.6); shrink-0;">
                 <i class="fa-solid fa-smoking"></i>
               </div>
-              <span class="map-tag-label" style="background: rgba(15, 23, 42, 0.92); color: #f8fafc; font-size: 11px; font-weight: 600; padding: 2.5px 7px; border-radius: 6px; border: 1px solid rgba(51, 65, 85, 0.9); white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.4); pointer-events: none;">
+              <span class="map-tag-label" style="background: rgba(15, 23, 42, 0.95); color: #f8fafc; font-size: 11px; font-weight: 600; padding: 2.5px 7px; border-radius: 6px; border: 1px solid rgba(51, 65, 85, 0.9); white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.4); pointer-events: none;">
                 ${shortTitle}
               </span>
             </div>
@@ -795,7 +803,7 @@
         const inspector = item["巡檢人員"] || "";
 
         const card = document.createElement('div');
-        card.className = "bg-slate-800/80 border border-slate-700/80 rounded-2xl p-3 flex justify-between items-center active:bg-slate-800 transition cursor-pointer";
+        card.className = "bg-slate-800/90 border border-slate-700/80 rounded-2xl p-3 flex justify-between items-center active:bg-slate-800 transition cursor-pointer";
         card.onclick = () => openDetailModal(item);
 
         card.innerHTML = `
